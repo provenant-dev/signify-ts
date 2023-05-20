@@ -32,7 +32,7 @@ export function signature(signages: Array<Signage>): Headers {
         let ordinal = signage.ordinal
         let digest = signage.digest
         let kind = signage.kind
-        let tags: Array<string>
+        let tags: Array<string> = new Array<string>()
 
         if (signage.markers instanceof Map) {
             tags = Array.from(signage.markers.keys())
@@ -67,19 +67,18 @@ export function signature(signages: Array<Signage>): Headers {
 
         markers.forEach((marker, idx) => {
             let tag: string
-            if (tags != undefined) {
+            if (tags.length  > 0 ) {
                 tag = tags[idx]
             } else if (marker instanceof Siger) {
                 if (!indexed)
                     throw new Error(`Indexed signature marker ${marker} when indexed False.`)
-
-                tag = marker.index.toString()
+                let _marker = marker as Siger//to get the index property available
+                tag = _marker.index.toString()
             } else {  // Must be a Cigar
                 if (indexed)
                     throw new Error(`Unindexed signature marker ${marker} when indexed True.`)
                 tag = marker.verfer!.qb64
             }
-
             val = marker.qb64
             items.push(`${tag}="${val}"`)
         })

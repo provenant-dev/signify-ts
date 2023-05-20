@@ -14,11 +14,11 @@ describe('siginput', () => {
         let signer = salter.signer()
 
         let headers: Headers = new Headers([
-            ["Content-Type", "application/json"],
-            ["Content-Length", "256"],
-            ["Connection", "close"],
-            ["Signify-Resource", "EWJkQCFvKuyxZi582yJPb0wcwuW3VXmFNuvbQuBpgmIs"],
-            ["Signify-Timestamp", "2022-09-24T00:05:48.196795+00:00"],
+            ["content-type", "application/json"],
+            ["content-length", "256"],
+            ["connection", "close"],
+            ["signify-resource", "EWJkQCFvKuyxZi582yJPb0wcwuW3VXmFNuvbQuBpgmIs"],
+            ["signify-timestamp", "2022-09-24T00:05:48.196795+00:00"],
         ])
         jest.spyOn(utilApi, "nowUTC").mockReturnValue(new Date("2021-01-01T00:00:00.000000+00:00"))
 
@@ -28,7 +28,7 @@ describe('siginput', () => {
             method: "POST",
             path: "/signify",
             headers,
-            fields: ["Signify-Resource", "@method", "@path", "Signify-Timestamp"],
+            fields: ["signify-resource", "@method", "@path", "signify-timestamp"],
             alg: "ed25519",
             keyid: signer.verfer.qb64
         } as SiginputArgs)
@@ -36,8 +36,8 @@ describe('siginput', () => {
         assert.equal(header.size, 1)
         assert.equal(header.has("Signature-Input"), true)
         let sigipt = header.get("Signature-Input")
-        assert.equal(sigipt, 'sig0=("Signify-Resource" "@method" "@path" "Signify-Timestamp");created=1609459200;keyid="DN54yRad_BTqgZYUSi_NthRBQrxSnqQdJXWI5UHcGOQt";alg="ed25519"')
-        assert.equal(sig.qb64, "0BAU6RvYeiudxVDADCeG2I4S2Y0HVdu97lleiGtUt_swYgSKflVzrqAQJBfrt6vaIO7-dvnPhxfNGTLhONBnqFMJ")
+        assert.equal(sigipt, 'sig0=("signify-resource" "@method" "@path" "signify-timestamp");created=1609459200;keyid="DN54yRad_BTqgZYUSi_NthRBQrxSnqQdJXWI5UHcGOQt";alg="ed25519"')
+        assert.equal(sig.qb64, "0BCgcVU9RjWAzerXlDs75KDqpa8LV3bu1VJfNWd-EZmPIi0kgGPn6cLCVB59oSJ9FGBmUDg2T5ogzUzFZpg0tf8H")
     })
 })
 

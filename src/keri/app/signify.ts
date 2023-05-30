@@ -61,7 +61,7 @@ export class SignifyClient {
             pidx: 1,
             tier: this.controller?.tier
         };
-        let _url = this.url.includes("3903") ? this.url : "http://localhost:3903";
+        let _url = this.url.includes("https") ? this.url : "http://localhost:3903";
         const res = await fetch(_url + "/boot", {
             method: "POST",
             body: JSON.stringify(data),

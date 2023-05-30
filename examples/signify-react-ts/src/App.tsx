@@ -6,6 +6,9 @@ import './App.css'
 // @ts-ignore
 import {SignifyClient, ready} from "signify-ts";
 import { Signify } from './Signify';
+
+import MainComponent from './MainComponent';
+
 function generateRandomKey() {
   const characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   const length = 21;
@@ -28,7 +31,7 @@ function App() {
 
     return (
         <>
-            <Signify/>
+            <MainComponent/>
         </>
     )
 }

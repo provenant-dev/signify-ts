@@ -449,7 +449,7 @@ const ClientComponent = ({ client }) => {
       <>
         <Grid container >
           <AidComponent data={agent} text={'Agent'} />
-          <AidComponent data={controller} text={'Controller'} />
+          <AidComponent data={controller} text={'User'} />
         </Grid>
 
 

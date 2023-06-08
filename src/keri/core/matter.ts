@@ -13,16 +13,54 @@ export class Codex {
 }
 
 export class MatterCodex extends Codex {
-    Ed25519_Seed:         string = 'A'    // Ed25519 256 bit random seed for private key
-    Ed25519N:             string = 'B'    // Ed25519 verification key non-transferable, basic derivation.
-    X25519:               string = 'C'    // X25519 public encryption key, converted from Ed25519 or Ed25519N.
-    Ed25519:              string = 'D'    // Ed25519 verification key basic derivation
-    Blake3_256:           string = 'E'    // Blake3 256 bit digest self-addressing derivation.
-    X25519_Private:       string = 'O'    // X25519 private decryption key converted from Ed25519
-    X25519_Cipher_Seed:   string = 'P'    // X25519 124 char b64 Cipher of 44 char qb64 Seed
-    X25519_Cipher_Salt:   string = '1AAH' // X25519 100 char b64 Cipher of 24 char qb64 Salt
-    Salt_128:             string = '0A'   // 128 bit random salt or 128 bit number (see Huge)
-    Ed25519_Sig:          string = '0B'   // Ed25519 signature.
+    Ed25519_Seed:         string = 'A'  // Ed25519 256 bit random seed for private key
+    Ed25519N:             string = 'B'  // Ed25519 verification key non-transferable, basic derivation.
+    X25519:               string = 'C'  // X25519 public encryption key, converted from Ed25519 or Ed25519N.
+    Ed25519:              string = 'D'  // Ed25519 verification key basic derivation
+    Blake3_256:           string = 'E'  // Blake3 256 bit digest self-addressing derivation.
+    Blake2b_256:          string = 'F'  // Blake2b 256 bit digest self-addressing derivation.
+    Blake2s_256:          string = 'G'  // Blake2s 256 bit digest self-addressing derivation.
+    SHA3_256:             string = 'H'  // SHA3 256 bit digest self-addressing derivation.
+    SHA2_256:             string = 'I'  // SHA2 256 bit digest self-addressing derivation.
+    ECDSA_256k1_Seed:     string = 'J'  // ECDSA secp256k1 256 bit random Seed for private key
+    Ed448_Seed:           string = 'K'  // Ed448 448 bit random Seed for private key
+    X448:                 string = 'L'  // X448 public encryption key, converted from Ed448
+    Short:                string = 'M'  // Short 2 byte b2 number
+    Big:                  string = 'N'  // Big 8 byte b2 number
+    X25519_Private:       string = 'O'  // X25519 private decryption key converted from Ed25519
+    X25519_Cipher_Seed:   string = 'P'  // X25519 124 char b64 Cipher of 44 char qb64 Seed
+    Salt_128:             string = '0A'  // 128 bit random salt or 128 bit number (see Huge)
+    Ed25519_Sig:          string = '0B'  // Ed25519 signature.
+    ECDSA_256k1_Sig:      string = '0C'  // ECDSA secp256k1 signature.
+    Blake3_512:           string = '0D'  // Blake3 512 bit digest self-addressing derivation.
+    Blake2b_512:          string = '0E'  // Blake2b 512 bit digest self-addressing derivation.
+    SHA3_512:             string = '0F'  // SHA3 512 bit digest self-addressing derivation.
+    SHA2_512:             string = '0G'  // SHA2 512 bit digest self-addressing derivation.
+    Long:                 string = '0H'  // Long 4 byte b2 number
+    ECDSA_256k1N:         string = '1AAA'  // ECDSA secp256k1 verification key non-transferable, basic derivation.
+    ECDSA_256k1:          string = '1AAB'  // Ed25519 public verification or encryption key, basic derivation
+    Ed448N:               string = '1AAC'  // Ed448 non-transferable prefix public signing verification key. Basic derivation.
+    Ed448:                string = '1AAD'  // Ed448 public signing verification key. Basic derivation.
+    Ed448_Sig:            string = '1AAE'  // Ed448 signature. Self-signing derivation.
+    Tern:                 string = '1AAF'  // 3 byte b2 number or 4 char B64 str.
+    DateTime:             string = '1AAG'  // Base64 custom encoded 32 char ISO-8601 DateTime
+    X25519_Cipher_Salt:   string = '1AAH'  // X25519 100 char b64 Cipher of 24 char qb64 Salt
+    TBD1:                 string = '2AAA'  // Testing purposes only fixed with lead size 1
+    TBD2:                 string = '3AAA'  // Testing purposes only of fixed with lead size 2
+    StrB64_L0:            string = '4A'  // String Base64 Only Lead Size 0
+    StrB64_L1:            string = '5A'  // String Base64 Only Lead Size 1
+    StrB64_L2:            string = '6A'  // String Base64 Only Lead Size 2
+    StrB64_Big_L0:        string = '7AAA'  // String Base64 Only Big Lead Size 0
+    StrB64_Big_L1:        string = '8AAA'  // String Base64 Only Big Lead Size 1
+    StrB64_Big_L2:        string = '9AAA'  // String Base64 Only Big Lead Size 2
+    Bytes_L0:             string = '4B'  // Byte String Leader Size 0
+    Bytes_L1:             string = '5B'  // Byte String Leader Size 1
+    Bytes_L2:             string = '6B'  // ByteString Leader Size 2
+    Bytes_Big_L0:         string = '7AAB'  // Byte String Big Leader Size 0
+    Bytes_Big_L1:         string = '8AAB'  // Byte String Big Leader Size 1
+    Bytes_Big_L2:         string = '9AAB'  // Byte String Big Leader Size 2
+
+
 }
 
 export const MtrDex = new MatterCodex()
@@ -54,10 +92,11 @@ export const DigiDex = new DigiCodex()
 export class Sizage {
     public hs: number;
     public ss: number;
+    public fs: number ;
     public ls: number;
-    public fs: number;
 
-    constructor(hs: number, ss: number, fs: number, ls: number) {
+
+    constructor(hs: number, ss: number, fs: number , ls: number) {
         this.hs = hs;
         this.ss = ss;
         this.fs = fs;
@@ -86,6 +125,20 @@ export class Matter {
         "0A": new Sizage(2, 0, 24, 0),
         '0B': new Sizage(2, 0, 88, 0),
         '1AAH': new Sizage(4, 0, 100, 0),
+        '2AAA': new Sizage(4, 0, 8, 1),
+        '3AAA': new Sizage(4, 0, 8, 2),
+        '4A': new Sizage(2, 2, -1, 0),
+        '5A': new Sizage(2, 2, -1, 1),
+        '6A': new Sizage(2, 2, -1, 2),
+        '7AAA': new Sizage(4, 4, -1, 0),
+        '8AAA': new Sizage(4, 4, -1, 1),
+        '9AAA': new Sizage(4, 4, -1, 2),
+        '4B': new Sizage(2, 2, -1, 0),
+        '5B': new Sizage(2, 2, -1, 1),
+        '6B': new Sizage(2, 2, -1, 2),
+        '7AAB': new Sizage(4, 4, -1, 0),
+        '8AAB': new Sizage(4, 4, -1, 1),
+        '9AAB': new Sizage(4, 4, -1, 2),
     }));
 
     static Hards = new Map<string, number>([['A', 1], ['B', 1], ['C', 1], ['D', 1], ['E', 1], ['F', 1], ['G', 1],
@@ -109,8 +162,8 @@ export class Matter {
             }
 
             // Add support for variable size codes here if needed, this code only works for stable size codes
-            let sizage = Matter.Sizes.get(code)
-            if (sizage!.fs == -1) {  // invalid
+            let sizage = Matter.Sizes.get(code)!
+            if (sizage.fs == -1) {  // invalid
                 throw new Error(`Unsupported variable size code=${code}`)
             }
 

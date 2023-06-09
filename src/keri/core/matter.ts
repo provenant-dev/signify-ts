@@ -1,8 +1,8 @@
-import {EmptyMaterialError} from "./kering";
+import { EmptyMaterialError } from "./kering";
 
-import {intToB64, readInt} from './core';
+import { concat, intToB64, readInt } from './core';
 import Base64 from "urlsafe-base64"
-import {b, d} from "./core";
+import { b, d } from "./core";
 import { Buffer } from 'buffer';
 
 export class Codex {
@@ -13,52 +13,52 @@ export class Codex {
 }
 
 export class MatterCodex extends Codex {
-    Ed25519_Seed:         string = 'A'  // Ed25519 256 bit random seed for private key
-    Ed25519N:             string = 'B'  // Ed25519 verification key non-transferable, basic derivation.
-    X25519:               string = 'C'  // X25519 public encryption key, converted from Ed25519 or Ed25519N.
-    Ed25519:              string = 'D'  // Ed25519 verification key basic derivation
-    Blake3_256:           string = 'E'  // Blake3 256 bit digest self-addressing derivation.
-    Blake2b_256:          string = 'F'  // Blake2b 256 bit digest self-addressing derivation.
-    Blake2s_256:          string = 'G'  // Blake2s 256 bit digest self-addressing derivation.
-    SHA3_256:             string = 'H'  // SHA3 256 bit digest self-addressing derivation.
-    SHA2_256:             string = 'I'  // SHA2 256 bit digest self-addressing derivation.
-    ECDSA_256k1_Seed:     string = 'J'  // ECDSA secp256k1 256 bit random Seed for private key
-    Ed448_Seed:           string = 'K'  // Ed448 448 bit random Seed for private key
-    X448:                 string = 'L'  // X448 public encryption key, converted from Ed448
-    Short:                string = 'M'  // Short 2 byte b2 number
-    Big:                  string = 'N'  // Big 8 byte b2 number
-    X25519_Private:       string = 'O'  // X25519 private decryption key converted from Ed25519
-    X25519_Cipher_Seed:   string = 'P'  // X25519 124 char b64 Cipher of 44 char qb64 Seed
-    Salt_128:             string = '0A'  // 128 bit random salt or 128 bit number (see Huge)
-    Ed25519_Sig:          string = '0B'  // Ed25519 signature.
-    ECDSA_256k1_Sig:      string = '0C'  // ECDSA secp256k1 signature.
-    Blake3_512:           string = '0D'  // Blake3 512 bit digest self-addressing derivation.
-    Blake2b_512:          string = '0E'  // Blake2b 512 bit digest self-addressing derivation.
-    SHA3_512:             string = '0F'  // SHA3 512 bit digest self-addressing derivation.
-    SHA2_512:             string = '0G'  // SHA2 512 bit digest self-addressing derivation.
-    Long:                 string = '0H'  // Long 4 byte b2 number
-    ECDSA_256k1N:         string = '1AAA'  // ECDSA secp256k1 verification key non-transferable, basic derivation.
-    ECDSA_256k1:          string = '1AAB'  // Ed25519 public verification or encryption key, basic derivation
-    Ed448N:               string = '1AAC'  // Ed448 non-transferable prefix public signing verification key. Basic derivation.
-    Ed448:                string = '1AAD'  // Ed448 public signing verification key. Basic derivation.
-    Ed448_Sig:            string = '1AAE'  // Ed448 signature. Self-signing derivation.
-    Tern:                 string = '1AAF'  // 3 byte b2 number or 4 char B64 str.
-    DateTime:             string = '1AAG'  // Base64 custom encoded 32 char ISO-8601 DateTime
-    X25519_Cipher_Salt:   string = '1AAH'  // X25519 100 char b64 Cipher of 24 char qb64 Salt
-    TBD1:                 string = '2AAA'  // Testing purposes only fixed with lead size 1
-    TBD2:                 string = '3AAA'  // Testing purposes only of fixed with lead size 2
-    StrB64_L0:            string = '4A'  // String Base64 Only Lead Size 0
-    StrB64_L1:            string = '5A'  // String Base64 Only Lead Size 1
-    StrB64_L2:            string = '6A'  // String Base64 Only Lead Size 2
-    StrB64_Big_L0:        string = '7AAA'  // String Base64 Only Big Lead Size 0
-    StrB64_Big_L1:        string = '8AAA'  // String Base64 Only Big Lead Size 1
-    StrB64_Big_L2:        string = '9AAA'  // String Base64 Only Big Lead Size 2
-    Bytes_L0:             string = '4B'  // Byte String Leader Size 0
-    Bytes_L1:             string = '5B'  // Byte String Leader Size 1
-    Bytes_L2:             string = '6B'  // ByteString Leader Size 2
-    Bytes_Big_L0:         string = '7AAB'  // Byte String Big Leader Size 0
-    Bytes_Big_L1:         string = '8AAB'  // Byte String Big Leader Size 1
-    Bytes_Big_L2:         string = '9AAB'  // Byte String Big Leader Size 2
+    Ed25519_Seed: string = 'A'  // Ed25519 256 bit random seed for private key
+    Ed25519N: string = 'B'  // Ed25519 verification key non-transferable, basic derivation.
+    X25519: string = 'C'  // X25519 public encryption key, converted from Ed25519 or Ed25519N.
+    Ed25519: string = 'D'  // Ed25519 verification key basic derivation
+    Blake3_256: string = 'E'  // Blake3 256 bit digest self-addressing derivation.
+    Blake2b_256: string = 'F'  // Blake2b 256 bit digest self-addressing derivation.
+    Blake2s_256: string = 'G'  // Blake2s 256 bit digest self-addressing derivation.
+    SHA3_256: string = 'H'  // SHA3 256 bit digest self-addressing derivation.
+    SHA2_256: string = 'I'  // SHA2 256 bit digest self-addressing derivation.
+    ECDSA_256k1_Seed: string = 'J'  // ECDSA secp256k1 256 bit random Seed for private key
+    Ed448_Seed: string = 'K'  // Ed448 448 bit random Seed for private key
+    X448: string = 'L'  // X448 public encryption key, converted from Ed448
+    Short: string = 'M'  // Short 2 byte b2 number
+    Big: string = 'N'  // Big 8 byte b2 number
+    X25519_Private: string = 'O'  // X25519 private decryption key converted from Ed25519
+    X25519_Cipher_Seed: string = 'P'  // X25519 124 char b64 Cipher of 44 char qb64 Seed
+    Salt_128: string = '0A'  // 128 bit random salt or 128 bit number (see Huge)
+    Ed25519_Sig: string = '0B'  // Ed25519 signature.
+    ECDSA_256k1_Sig: string = '0C'  // ECDSA secp256k1 signature.
+    Blake3_512: string = '0D'  // Blake3 512 bit digest self-addressing derivation.
+    Blake2b_512: string = '0E'  // Blake2b 512 bit digest self-addressing derivation.
+    SHA3_512: string = '0F'  // SHA3 512 bit digest self-addressing derivation.
+    SHA2_512: string = '0G'  // SHA2 512 bit digest self-addressing derivation.
+    Long: string = '0H'  // Long 4 byte b2 number
+    ECDSA_256k1N: string = '1AAA'  // ECDSA secp256k1 verification key non-transferable, basic derivation.
+    ECDSA_256k1: string = '1AAB'  // Ed25519 public verification or encryption key, basic derivation
+    Ed448N: string = '1AAC'  // Ed448 non-transferable prefix public signing verification key. Basic derivation.
+    Ed448: string = '1AAD'  // Ed448 public signing verification key. Basic derivation.
+    Ed448_Sig: string = '1AAE'  // Ed448 signature. Self-signing derivation.
+    Tern: string = '1AAF'  // 3 byte b2 number or 4 char B64 str.
+    DateTime: string = '1AAG'  // Base64 custom encoded 32 char ISO-8601 DateTime
+    X25519_Cipher_Salt: string = '1AAH'  // X25519 100 char b64 Cipher of 24 char qb64 Salt
+    TBD1: string = '2AAA'  // Testing purposes only fixed with lead size 1
+    TBD2: string = '3AAA'  // Testing purposes only of fixed with lead size 2
+    StrB64_L0: string = '4A'  // String Base64 Only Lead Size 0
+    StrB64_L1: string = '5A'  // String Base64 Only Lead Size 1
+    StrB64_L2: string = '6A'  // String Base64 Only Lead Size 2
+    StrB64_Big_L0: string = '7AAA'  // String Base64 Only Big Lead Size 0
+    StrB64_Big_L1: string = '8AAA'  // String Base64 Only Big Lead Size 1
+    StrB64_Big_L2: string = '9AAA'  // String Base64 Only Big Lead Size 2
+    Bytes_L0: string = '4B'  // Byte String Leader Size 0
+    Bytes_L1: string = '5B'  // Byte String Leader Size 1
+    Bytes_L2: string = '6B'  // ByteString Leader Size 2
+    Bytes_Big_L0: string = '7AAB'  // Byte String Big Leader Size 0
+    Bytes_Big_L1: string = '8AAB'  // Byte String Big Leader Size 1
+    Bytes_Big_L2: string = '9AAB'  // Byte String Big Leader Size 2
 
 
 }
@@ -74,6 +74,37 @@ export class NonTransCodex extends Codex {
 
 export const NonTransDex = new NonTransCodex()
 
+// class LargeVarRawSizeCodex:
+//     """
+//     LargeVarRawSizeCodex is codex all selector characters for the three large
+//     variable raw size tables that act as one table but with different leader
+//     byte sizes.
+
+//     Only provide defined codes.
+//     Undefined are left out so that inclusion(exclusion) via 'in' operator works.
+//     """
+//     Lead0_Big: str = '7'  # First Selector Character for all ls == 0 codes
+//     Lead1_Big: str = '8'  # First Selector Character for all ls == 1 codes
+//     Lead2_Big: str = '9'  # First Selector Character for all ls == 2 codes
+
+//     def __iter__(self):
+//         return iter(astuple(self))
+
+export class LargeVarRawSizeCodex extends Codex {
+    Lead0_Big: string = '7'  // First Selector Character for all ls == 0 codes
+    Lead1_Big: string = '8'  // First Selector Character for all ls == 1 codes
+    Lead2_Big: string = '9'  // First Selector Character for all ls == 2 codes
+}
+
+export const LargeVrzDex = new LargeVarRawSizeCodex()
+
+export class SmallVarRawSizeCodex extends Codex {
+    Lead0: string = '4'  // First Selector Character for all ls == 0 codes
+    Lead1: string = '5'  // First Selector Character for all ls == 1 codes
+    Lead2: string = '6'  // First Selector Character for all ls == 2 codes
+}
+
+export const SmallVrzDex = new SmallVarRawSizeCodex()
 
 export class DigiCodex extends Codex {
     Blake3_256: string = 'E'  // Blake3 256 bit digest self-addressing derivation.
@@ -89,14 +120,34 @@ export class DigiCodex extends Codex {
 
 export const DigiDex = new DigiCodex()
 
+export class NumCodex extends Codex {
+    Short: string = 'M'  // Short 2 byte b2 number
+    Long: string = '0H'  // Long 4 byte b2 number
+    Big: string = 'N'  // Big 8 byte b2 number
+    Huge: string = '0A'  // Huge 16 byte b2 number (same as Salt_128)
+}
+
+export const NumDex = new NumCodex()
+
+
+export class BextCodex extends Codex {
+    StrB64_L0: string = '4A'  // String Base64 Only Leader Size 0
+    StrB64_L1: string = '5A'  // String Base64 Only Leader Size 1
+    StrB64_L2: string = '6A'  // String Base64 Only Leader Size 2
+    StrB64_Big_L0: string = '7AAA'  // String Base64 Only Big Leader Size 0
+    StrB64_Big_L1: string = '8AAA'  // String Base64 Only Big Leader Size 1
+    StrB64_Big_L2: string = '9AAA'  // String Base64 Only Big Leader Size 2
+}
+
+export const BexDex = new BextCodex();
 export class Sizage {
     public hs: number;
     public ss: number;
-    public fs: number ;
+    public fs: number;
     public ls: number;
 
 
-    constructor(hs: number, ss: number, fs: number , ls: number) {
+    constructor(hs: number, ss: number, fs: number, ls: number) {
         this.hs = hs;
         this.ss = ss;
         this.fs = fs;
@@ -142,18 +193,18 @@ export class Matter {
     }));
 
     static Hards = new Map<string, number>([['A', 1], ['B', 1], ['C', 1], ['D', 1], ['E', 1], ['F', 1], ['G', 1],
-        ['H', 1], ['I', 1], ['J', 1], ['K', 1], ['L', 1], ['M', 1], ['N', 1], ['O', 1], ['P', 1], ['Q', 1], ['R', 1],
-        ['S', 1], ['T', 1], ['U', 1], ['V', 1], ['W', 1], ['X', 1], ['Y', 1], ['Z', 1], ['a', 1], ['b', 1], ['c', 1],
-        ['d', 1], ['e', 1], ['f', 1], ['g', 1], ['h', 1], ['i', 1], ['j', 1], ['k', 1], ['l', 1], ['m', 1], ['n', 1],
-        ['o', 1], ['p', 1], ['q', 1], ['r', 1], ['s', 1], ['t', 1], ['u', 1], ['v', 1], ['w', 1], ['x', 1], ['y', 1],
-        ['z', 1], ['0', 2], ['1', 4], ['2', 4], ['3', 4], ['4', 2], ['5', 2], ['6', 2], ['7', 4], ['8', 4], ['9', 4]])
+    ['H', 1], ['I', 1], ['J', 1], ['K', 1], ['L', 1], ['M', 1], ['N', 1], ['O', 1], ['P', 1], ['Q', 1], ['R', 1],
+    ['S', 1], ['T', 1], ['U', 1], ['V', 1], ['W', 1], ['X', 1], ['Y', 1], ['Z', 1], ['a', 1], ['b', 1], ['c', 1],
+    ['d', 1], ['e', 1], ['f', 1], ['g', 1], ['h', 1], ['i', 1], ['j', 1], ['k', 1], ['l', 1], ['m', 1], ['n', 1],
+    ['o', 1], ['p', 1], ['q', 1], ['r', 1], ['s', 1], ['t', 1], ['u', 1], ['v', 1], ['w', 1], ['x', 1], ['y', 1],
+    ['z', 1], ['0', 2], ['1', 4], ['2', 4], ['3', 4], ['4', 2], ['5', 2], ['6', 2], ['7', 4], ['8', 4], ['9', 4]])
 
 
     private _code: string = "";
     private _size: number = -1;
     private _raw: Uint8Array = new Uint8Array(0);
 
-    constructor({raw, code = MtrDex.Ed25519N, qb64b, qb64, qb2}: MatterArgs) {
+    constructor({ raw, code = MtrDex.Ed25519N, qb64b, qb64, qb2 }: MatterArgs) {
 
         let size = -1
         if (raw != undefined) {
@@ -244,10 +295,46 @@ export class Matter {
         let raw = this.raw;
 
         let ps = ((3 - (raw.length % 3)) % 3);  // pad size chars or lead size bytes
-        let sizage = Matter.Sizes.get(code);
+        let sizage = Matter.Sizes.get(code)!;
 
-        if (sizage!.fs === -1) {  // Variable size code, NOT SUPPORTED
-            throw new Error("Variable sized codes not supported... yet");
+        if (sizage.fs === -1) {  // Variable size code, NOT SUPPORTED
+            // cs = hs + ss  # both hard + soft size
+            let cs = sizage.hs + sizage.ss
+            // if cs % 4:
+            //     raise InvalidCodeSizeError(f"Whole code size not multiple of 4 for "
+            //                                f"variable length material. cs={cs}.")
+            if (cs % 4 != 0) {
+                throw new Error(`Whole code size not multiple of 4 for variable length material. cs=${cs}.`)
+            }
+
+            // if size < 0 or size > (64 ** ss - 1):
+            //     raise InvalidVarSizeError("Invalid size={} for code={}."
+            //                               "".format(size, code))
+            // # both is hard code + size converted to ss B64 chars
+            // both = f"{code}{intToB64(size, l=ss)}"
+
+            if (size < 0 || size > (64 ** sizage.ss - 1)) {
+                throw new Error(`Invalid size=${size} for code=${code}.`)
+            }
+            let both = code + intToB64(size, sizage.ss)
+            // # check that both is multiple of 4
+
+
+            // if len(both) % 4 != ps - ls:  # adjusted pad given lead bytes
+            //     raise InvalidCodeSizeError(f"Invalid code={both} for converted"
+            //                                f" raw pad size={ps}.")
+
+            if (both.length % 4 != ps - sizage.ls) {
+                throw new Error(`Invalid code=${both} for converted raw pad size=${sizage.ps}.`)
+            }
+            // # prepad, convert, and prepend
+            // return (both.encode("utf-8") + encodeB64(bytes([0] * ls) + raw))
+
+            let prepad = new Uint8Array(sizage.ls)
+            let bothb = b(both)
+            let final = concat(bothb, concat(prepad, raw))
+            return final
+
         } else {
             let both = code
             let cs = both.length

@@ -1,16 +1,7 @@
 import {  b ,concat} from "./core";
-import { Matter, MtrDex, Codex } from "./matter";
+import { Matter, MtrDex, BexDex } from "./matter";
 
-class BextCodex extends Codex {
-    StrB64_L0: string = '4A'  // String Base64 Only Leader Size 0
-    StrB64_L1: string = '5A'  // String Base64 Only Leader Size 1
-    StrB64_L2: string = '6A'  // String Base64 Only Leader Size 2
-    StrB64_Big_L0: string = '7AAA'  // String Base64 Only Big Leader Size 0
-    StrB64_Big_L1: string = '8AAA'  // String Base64 Only Big Leader Size 1
-    StrB64_Big_L2: string = '9AAA'  // String Base64 Only Big Leader Size 2
-}
 
-const BexDex = new BextCodex();
 const base64Regex = /^(?:[A-Za-z0-9+/]{4})*?(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
 export class Bexter extends Matter {

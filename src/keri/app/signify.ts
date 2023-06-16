@@ -811,8 +811,13 @@ class Challenges {
             said: said
         }
         let res = await this.client.fetch(path, method, data, undefined)
-
-        return res
+        console.log('accepted,' ,res)
+        if (res.status === 202) {
+            return res
+        }
+        else {
+            return new Response(res.body, { status: res.status })
+        }
     }
 
 }

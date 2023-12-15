@@ -10,6 +10,7 @@
   },
   "types": "./dist/index.d.ts",
   "type": "module",
+  "private": true,
   "files": [
     "dist",
     "src"

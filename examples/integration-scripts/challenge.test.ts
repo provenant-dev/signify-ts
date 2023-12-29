@@ -55,7 +55,7 @@ test('challenge', async () => {
             'BIKKuvBwpmDVA4Ds-EpL5bt9OqPzWPja2LigFYZN2YfX',
         ],
     });
-    const { response: aid1 } = await waitOperation<{ i: string }>(
+    const { response: aid1 } = await waitOperation(
         client1,
         await icpResult1.op()
     );
@@ -72,14 +72,11 @@ test('challenge', async () => {
             'BIKKuvBwpmDVA4Ds-EpL5bt9OqPzWPja2LigFYZN2YfX',
         ],
     });
-    let op2 = await icpResult2.op();
-    while (!op2['done']) {
-        op2 = await client2.operations().get(op2.name);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-    const aid2 = op2['response'];
+    const { response: aid2 } = await waitOperation(
+        client2,
+        await icpResult2.op()
+    );
     await client2.identifiers().addEndRole('bob', 'agent', client2!.agent!.pre);
-    console.log("Bob's AID:", aid2.i);
 
     // Exchenge OOBIs
     const oobi1 = await client1.oobis().get('alice', 'agent');
@@ -92,8 +89,11 @@ test('challenge', async () => {
 
     // List Client 1 contacts
     let contacts1 = await client1.contacts().list();
-    expect(contacts1[0].alias).toEqual('bob');
-    expect(contacts1[0].challenges).toHaveLength(0);
+    let bobContact = contacts1.find(
+        (contact: { alias: string }) => contact.alias === 'bob'
+    );
+    expect(bobContact.alias).toEqual('bob');
+    expect(bobContact.challenges).toHaveLength(0);
 
     // Bob responds to Alice challenge
     await client2.challenges().respond('bob', aid1.i, challenge1_small.words);
@@ -119,5 +119,8 @@ test('challenge', async () => {
 
     // Check Bob's challenge in conctats
     contacts1 = await client1.contacts().list();
-    expect(contacts1[0].challenges[0].authenticated).toEqual(true);
+    bobContact = contacts1.find(
+        (contact: { alias: string }) => contact.alias === 'bob'
+    );
+    expect(bobContact.challenges[0].authenticated).toEqual(true);
 }, 30000);

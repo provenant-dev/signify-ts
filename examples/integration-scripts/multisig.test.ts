@@ -5,8 +5,14 @@ import signify, {
     IssueCredentialResult,
 } from 'signify-ts';
 import { resolveEnvironment } from './utils/resolve-env';
-import { waitForNotifications, waitOperation } from './utils/test-util';
-import { getOrCreateClient } from './utils/test-setup';
+import {
+    assertOperations,
+    markNotification,
+    waitForNotifications,
+    waitOperation,
+    warnNotifications,
+} from './utils/test-util';
+import { getOrCreateClient, getOrCreateIdentifier } from './utils/test-setup';
 
 const { vleiServerUrl } = resolveEnvironment();
 const WITNESS_AIDS = [
@@ -898,6 +904,8 @@ test('multisig', async function run() {
     res = await client2.groups().getRequest(msgSaid);
     exn = res[0].exn;
 
+    const credentialSaid = exn.e.acdc.d;
+
     const credRes2 = await client2.credentials().issue({
         issuerName: 'multisig',
         registryId: regk2,
@@ -963,9 +971,9 @@ test('multisig', async function run() {
         datetime: stamp,
     });
 
-    await client1
-        .exchanges()
-        .sendFromEvents('multisig', 'credential', grant, gsigs, end, [holder]);
+    op1 = await client1
+        .ipex()
+        .submitGrant('multisig', grant, gsigs, end, [holder]);
 
     mstate = m['state'];
     seal = [
@@ -1011,11 +1019,9 @@ test('multisig', async function run() {
         datetime: stamp,
     });
 
-    await client2
-        .exchanges()
-        .sendFromEvents('multisig', 'credential', grant2, gsigs2, end2, [
-            holder,
-        ]);
+    op2 = await client2
+        .ipex()
+        .submitGrant('multisig', grant2, gsigs2, end2, [holder]);
 
     sigers = gsigs2.map((sig) => new signify.Siger({ qb64: sig }));
 
@@ -1055,11 +1061,9 @@ test('multisig', async function run() {
         datetime: stamp,
     });
 
-    await client3
-        .exchanges()
-        .sendFromEvents('multisig', 'credential', grant3, gsigs3, end3, [
-            holder,
-        ]);
+    op3 = await client3
+        .ipex()
+        .submitGrant('multisig', grant3, gsigs3, end3, [holder]);
 
     sigers = gsigs3.map((sig) => new signify.Siger({ qb64: sig }));
 
@@ -1093,9 +1097,16 @@ test('multisig', async function run() {
         .ipex()
         .admit('holder', '', res.exn.d);
 
-    res = await client4
+    op4 = await client4
         .ipex()
         .submitAdmit('holder', admit, asigs, aend, [m['prefix']]);
+
+    await Promise.all([
+        waitOperation(client1, op1),
+        waitOperation(client2, op2),
+        waitOperation(client3, op3),
+        waitOperation(client4, op4),
+    ]);
 
     console.log('Holder creates and sends admit message');
 
@@ -1103,14 +1114,85 @@ test('multisig', async function run() {
     console.log('Member1 received exchange message with the admit response');
     const creds = await client4.credentials().list();
     console.log(`Holder holds ${creds.length} credential`);
-}, 360000);
+
+    await assertOperations(client1, client2, client3, client4);
+    await warnNotifications(client1, client2, client3, client4);
+
+    console.log('Revoking credential...');
+    const REVTIME = new Date().toISOString().replace('Z', '000+00:00');
+    const revokeRes = await client1
+        .credentials()
+        .revoke('multisig', credentialSaid, REVTIME);
+    op1 = revokeRes.op;
+
+    await multisigRevoke(
+        client1,
+        'member1',
+        'multisig',
+        revokeRes.rev,
+        revokeRes.anc
+    );
+
+    console.log(
+        'Member1 initiated credential revocation, waiting for others to join...'
+    );
+
+    // Member2 check for notifications and join the credential create  event
+    msgSaid = await waitAndMarkNotification(client2, '/multisig/rev');
+    console.log(
+        'Member2 received exchange message to join the credential revocation event'
+    );
+    res = await client2.groups().getRequest(msgSaid);
+
+    const revokeRes2 = await client2
+        .credentials()
+        .revoke('multisig', credentialSaid, REVTIME);
+
+    op2 = revokeRes2.op;
+    await multisigRevoke(
+        client2,
+        'member2',
+        'multisig',
+        revokeRes2.rev,
+        revokeRes2.anc
+    );
+    console.log('Member2 joins credential revoke event, waiting for others...');
+
+    // Member3 check for notifications and join the create registry event
+    msgSaid = await waitAndMarkNotification(client3, '/multisig/rev');
+    console.log(
+        'Member3 received exchange message to join the credential revocation event'
+    );
+    res = await client3.groups().getRequest(msgSaid);
+
+    const revokeRes3 = await client3
+        .credentials()
+        .revoke('multisig', credentialSaid, REVTIME);
+
+    op3 = revokeRes3.op;
+
+    await multisigRevoke(
+        client3,
+        'member3',
+        'multisig',
+        revokeRes3.rev,
+        revokeRes3.anc
+    );
+    console.log('Member3 joins credential revoke event, waiting for others...');
+
+    // Check completion
+    op1 = await waitOperation(client1, op1);
+    op2 = await waitOperation(client2, op2);
+    op3 = await waitOperation(client3, op3);
+    console.log('Multisig credential revocation completed!');
+}, 400000);
 
 async function waitAndMarkNotification(client: SignifyClient, route: string) {
     const notes = await waitForNotifications(client, route);
 
     await Promise.all(
         notes.map(async (note) => {
-            await client.notifications().mark(note.i);
+            await markNotification(client, note);
         })
     );
 
@@ -1118,15 +1200,11 @@ async function waitAndMarkNotification(client: SignifyClient, route: string) {
 }
 
 async function createAID(client: SignifyClient, name: string, wits: string[]) {
-    const icpResult1 = await client.identifiers().create(name, {
-        toad: wits.length,
+    await getOrCreateIdentifier(client, name, {
         wits: wits,
+        toad: wits.length,
     });
-    await waitOperation(client, await icpResult1.op());
-    const aid = await client.identifiers().get(name);
-    await client.identifiers().addEndRole(name, 'agent', client!.agent!.pre);
-    console.log(name, 'AID:', aid.prefix);
-    return aid;
+    return await client.identifiers().get(name);
 }
 
 async function multisigIssue(
@@ -1162,6 +1240,45 @@ async function multisigIssue(
             'multisig',
             leaderHab,
             '/multisig/iss',
+            { gid: groupHab.prefix },
+            embeds,
+            recipients
+        );
+}
+
+async function multisigRevoke(
+    client: SignifyClient,
+    memberName: string,
+    groupName: string,
+    rev: Serder,
+    anc: Serder
+) {
+    const leaderHab = await client.identifiers().get(memberName);
+    const groupHab = await client.identifiers().get(groupName);
+    const members = await client.identifiers().members(groupName);
+
+    const keeper = client.manager!.get(groupHab);
+    const sigs = await keeper.sign(signify.b(anc.raw));
+    const sigers = sigs.map((sig: string) => new signify.Siger({ qb64: sig }));
+    const ims = signify.d(signify.messagize(anc, sigers));
+    const atc = ims.substring(anc.size);
+
+    const embeds = {
+        iss: [rev, ''],
+        anc: [anc, atc],
+    };
+
+    const recipients = members.signing
+        .map((m: { aid: string }) => m.aid)
+        .filter((aid: string) => aid !== leaderHab.prefix);
+
+    await client
+        .exchanges()
+        .send(
+            memberName,
+            'multisig',
+            leaderHab,
+            '/multisig/rev',
             { gid: groupHab.prefix },
             embeds,
             recipients

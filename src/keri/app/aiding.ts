@@ -254,10 +254,8 @@ export class Identifier {
         const pre: string = hab.prefix;
 
         const state = hab.state;
-        const sn = Number(state.s);
+        const sn = parseInt(state.s, 16);
         const dig = state.d;
-
-        data = Array.isArray(data) ? data : [data];
 
         data = Array.isArray(data) ? data : [data];
 
@@ -307,7 +305,7 @@ export class Identifier {
         const state = hab.state;
         const count = state.k.length;
         const dig = state.d;
-        const ridx = Number(state.s) + 1;
+        const ridx = parseInt(state.s, 16) + 1;
         const wits = state.b;
         let isith = state.nt;
 
@@ -400,7 +398,7 @@ export class Identifier {
         role: string,
         eid?: string,
         stamp?: string
-    ): Promise<any> {
+    ): Promise<EventResult> {
         const hab = await this.get(name);
         const pre = hab.prefix;
 

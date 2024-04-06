@@ -160,8 +160,8 @@ describe('Aiding', () => {
 
         await client.identifiers().rotate('aid1');
         const lastCall = client.getLastMockRequest();
-        assert.equal(lastCall.path, '/identifiers/aid1');
-        assert.equal(lastCall.method, 'PUT');
+        assert.equal(lastCall.path, '/identifiers/aid1/events');
+        assert.equal(lastCall.method, 'POST');
         assert.deepEqual(lastCall.body.rot, {
             v: 'KERI10JSON000160_',
             t: 'rot',
@@ -208,8 +208,8 @@ describe('Aiding', () => {
 
         const lastCall = client.getLastMockRequest();
 
-        expect(lastCall.path).toEqual('/identifiers/aid1?type=ixn');
-        expect(lastCall.method).toEqual('PUT');
+        assert.equal(lastCall.path, '/identifiers/aid1/events');
+        assert.equal(lastCall.method, 'POST');
         expect(lastCall.body.ixn).toMatchObject({
             v: 'KERI10JSON000138_',
             t: 'ixn',
@@ -379,5 +379,36 @@ describe('Aiding', () => {
             };
             args !== null; // avoids TS6133
         });
+    });
+
+
+    it('Can rename salty identifier', async () => {
+        const aid1 = await createMockIdentifierState('aid1', bran, {});
+        client.fetch.mockResolvedValueOnce(Response.json(aid1));
+        client.fetch.mockResolvedValueOnce(Response.json({}));
+
+        const aidRenamed = await client
+            .identifiers()
+            .rename('aid1', 'aidRenamed');
+        client.fetch.mockResolvedValueOnce(Response.json(aidRenamed));
+        client.fetch.mockResolvedValueOnce(Response.json({}));
+        const lastCall = client.getLastMockRequest();
+        assert.equal(lastCall.path, '/identifiers/aid1');
+        assert.equal(lastCall.method, 'PUT');
+        assert.deepEqual(lastCall.body, {
+            name: 'aidRenamed',
+        });
+    });
+
+    it('Can delete salty identifier', async () => {
+        const aid1 = await createMockIdentifierState('aid1', bran, {});
+        client.fetch.mockResolvedValueOnce(Response.json(aid1));
+        client.fetch.mockResolvedValueOnce(Response.json({}));
+
+        await client.identifiers().delete('aid1');
+        client.fetch.mockResolvedValueOnce(Response.json({}));
+        const lastCall = client.getLastMockRequest();
+        assert.equal(lastCall.path, '/identifiers/aid1');
+        assert.equal(lastCall.method, 'DELETE');
     });
 });

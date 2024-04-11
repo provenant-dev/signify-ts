@@ -128,7 +128,7 @@ export class Identifier {
      * @returns {Promise<any>} A promise to the identifier information
      */
     async rename(name: string, newName: string): Promise<any> {
-        const path = `/identifiers/${name}`;
+        const path = `/identifiers/${encodeURIComponent(name)}`;
         const data = { name: newName };
         const method = 'PUT';
         const res = await this.client.fetch(path, method, data);
@@ -142,7 +142,7 @@ export class Identifier {
      * @returns {Promise<any>} A promise to the identifier information
      */
     async delete(name: string): Promise<any> {
-        const path = `/identifiers/${name}`;
+        const path = `/identifiers/${encodeURIComponent(name)}`;
         const method = 'DELETE';
         await this.client.fetch(path, method, null);
         return;
@@ -308,7 +308,7 @@ export class Identifier {
         jsondata[keeper.algo] = keeper.params();
 
         const res = await this.client.fetch(
-            '/identifiers/' + name + '/events',
+            `/identifiers/${encodeURIComponent(name)}/events`,
             'POST',
             jsondata
         );
@@ -407,7 +407,7 @@ export class Identifier {
         jsondata[keeper.algo] = keeper.params();
 
         const res = await this.client.fetch(
-            '/identifiers/' + name + '/events',
+            `/identifiers/${encodeURIComponent(name)}/events`,
             'POST',
             jsondata
         );
@@ -444,7 +444,7 @@ export class Identifier {
         };
 
         const res = this.client.fetch(
-            '/identifiers/' + name + '/endroles',
+            `/identifiers/${encodeURIComponent(name)}/endroles`,
             'POST',
             jsondata
         );
@@ -484,7 +484,7 @@ export class Identifier {
      */
     async members(name: string): Promise<any> {
         const res = await this.client.fetch(
-            '/identifiers/' + name + '/members',
+            `/identifiers/${encodeURIComponent(name)}/members`,
             'GET',
             undefined
         );

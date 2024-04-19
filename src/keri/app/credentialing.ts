@@ -255,7 +255,7 @@ export class Credentials {
 
         const sigs = await keeper.sign(b(anc.raw));
 
-        const path = `/identifiers/${hab.name}/credentials`;
+        const path = `/identifiers/${encodeURIComponent(hab.name)}/credentials`;
         const method = 'POST';
         const body = {
             acdc: acdc,
@@ -363,7 +363,7 @@ export class Credentials {
             [keeper.algo]: keeper.params(),
         };
 
-        const path = `/identifiers/${name}/credentials/${said}`;
+        const path = `/identifiers/${encodeURIComponent(name)}/credentials/${said}`;
         const method = 'DELETE';
         const headers = new Headers({
             Accept: 'application/json+cesr',
@@ -433,7 +433,7 @@ export class Credentials {
             include: include,
         };
 
-        const path = `/identifiers/${name}/credentials/${said}/presentations`;
+        const path = `/identifiers/${encodeURIComponent(name)}/credentials/${said}/presentations`;
         const method = 'POST';
         const headers = new Headers({
             Accept: 'application/json+cesr',
@@ -496,7 +496,7 @@ export class Credentials {
             recipient: recipient,
         };
 
-        const path = `/identifiers/${name}/requests`;
+        const path = `/identifiers/${encodeURIComponent(name)}/requests`;
         const method = 'POST';
         const headers = new Headers({
             Accept: 'application/json+cesr',
@@ -571,7 +571,7 @@ export class Registries {
      * @returns {Promise<any>} A promise to the list of registries
      */
     async list(name: string): Promise<any> {
-        const path = `/identifiers/${name}/registries`;
+        const path = `/identifiers/${encodeURIComponent(name)}/registries`;
         const method = 'GET';
         const res = await this.client.fetch(path, method, null);
         return await res.json();
@@ -652,7 +652,7 @@ export class Registries {
         ixn: Dict<any>,
         sigs: any[]
     ) {
-        const path = `/identifiers/${name}/registries`;
+        const path = `/identifiers/${encodeURIComponent(name)}/registries`;
         const method = 'POST';
 
         const data: any = {
@@ -680,7 +680,7 @@ export class Registries {
         registryName: string,
         newName: string
     ): Promise<any> {
-        const path = `/identifiers/${name}/registries/${registryName}`;
+        const path = `/identifiers/${encodeURIComponent(name)}/registries/${registryName}`;
         const method = 'PUT';
         const data = {
             name: newName,
@@ -804,7 +804,7 @@ export class Ipex {
         };
 
         const response = await this.client.fetch(
-            `/identifiers/${name}/ipex/grant`,
+            `/identifiers/${encodeURIComponent(name)}/ipex/grant`,
             'POST',
             body
         );
@@ -860,7 +860,7 @@ export class Ipex {
         };
 
         const response = await this.client.fetch(
-            `/identifiers/${name}/ipex/admit`,
+            `/identifiers/${encodeURIComponent(name)}/ipex/admit`,
             'POST',
             body
         );

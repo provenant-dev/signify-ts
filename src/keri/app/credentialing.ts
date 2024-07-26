@@ -191,6 +191,7 @@ export class Credentials {
      */
     async issue(args: IssueCredentialArgs): Promise<IssueCredentialResult> {
         const hab = await this.client.identifiers().get(args.issuerName);
+        const events = await this.client.keyEvents().get(hab.prefix);
         const estOnly = hab.state.c !== undefined && hab.state.c.includes('EO');
         if (estOnly) {
             // TODO implement rotation event
@@ -238,9 +239,23 @@ export class Credentials {
         });
 
         const sner = new CesrNumber({}, undefined, hab.state.s);
+        let sn = sner.num + 1;
+        let dig = hab.state.d;
+
+        // check if last event already has the anchor in it
+        // and avoid creating a new event if it does
+        const lastEvent = events[events.length - 1];
+        if (lastEvent.a.length == 1 && 
+            lastEvent.a[0].i == iss.i &&
+            lastEvent.a[0].s == iss.s &&
+            lastEvent.a[0].d == iss.d) 
+        {
+            sn = sner.num;
+            dig  = hab.state.p;
+        }
         const anc = interact({
             pre: hab.prefix,
-            sn: sner.num + 1,
+            sn: sn,
             data: [
                 {
                     i: iss.i,
@@ -248,7 +263,7 @@ export class Credentials {
                     d: iss.d,
                 },
             ],
-            dig: hab.state.d,
+            dig: dig,
             version: undefined,
             kind: undefined,
         });
@@ -294,6 +309,7 @@ export class Credentials {
         datetime?: string
     ): Promise<RevokeCredentialResult> {
         const hab = await this.client.identifiers().get(name);
+        const events = await this.client.keyEvents().get(hab.prefix);
         const pre: string = hab.prefix;
 
         const vs = versify(Ident.KERI, undefined, Serials.JSON, 0);
@@ -328,7 +344,8 @@ export class Credentials {
         }
 
         const sner = new CesrNumber({}, undefined, state.s);
-        const dig = state.d;
+        let sn = sner.num + 1;
+        let dig = state.d;
 
         const data: any = [
             {
@@ -340,13 +357,25 @@ export class Credentials {
 
         const keeper = this.client!.manager!.get(hab);
 
+        // check if last event already has the anchor in it
+        // and avoid creating a new event if it does
+        const lastEvent = events[events.length - 1];
+        if (lastEvent.a.length == 1 && 
+            lastEvent.a[0].i == rev.i &&
+            lastEvent.a[0].s == rev.s &&
+            lastEvent.a[0].d == rev.d) 
+        {
+            sn = sner.num;
+            dig  = state.p;
+        }
+
         if (estOnly) {
             // TODO implement rotation event
             throw new Error('Establishment only not implemented');
         } else {
             const serder = interact({
                 pre: pre,
-                sn: sner.num + 1,
+                sn: sn,
                 data: data,
                 dig: dig,
                 version: undefined,
@@ -592,6 +621,7 @@ export class Registries {
         nonce,
     }: CreateRegistryArgs): Promise<RegistryResult> {
         const hab = await this.client.identifiers().get(name);
+        const events = await this.client.keyEvents().get(hab.prefix);
         const pre: string = hab.prefix;
 
         const cnfg: string[] = [];
@@ -612,7 +642,7 @@ export class Registries {
         } else {
             const state = hab.state;
             const sner = new CesrNumber({}, undefined, state.s);
-            const dig = state.d;
+            let sn = sner.num + 1;            let dig = state.d;
 
             const data: any = [
                 {
@@ -621,10 +651,21 @@ export class Registries {
                     d: regser.pre,
                 },
             ];
+            // check if last event already has the anchor in it
+            // and avoid creating a new event if it does
+            const lastEvent = events[events.length - 1];
+            if (lastEvent.a.length == 1 && 
+                lastEvent.a[0].i == regser.pre &&
+                lastEvent.a[0].s == '0' &&
+                lastEvent.a[0].d == regser.pre) 
+            {
+                sn = sner.num
+                dig  = state.p;
+            }
 
             const serder = interact({
                 pre: pre,
-                sn: sner.num + 1,
+                sn: sn,
                 data: data,
                 dig: dig,
                 version: Versionage,

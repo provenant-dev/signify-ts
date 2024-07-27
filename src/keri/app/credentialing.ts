@@ -245,10 +245,10 @@ export class Credentials {
         // check if last event already has the anchor in it
         // and avoid creating a new event if it does
         const lastEvent = events[events.length - 1];
-        if (lastEvent.a.length == 1 && 
-            lastEvent.a[0].i == iss.i &&
-            lastEvent.a[0].s == iss.s &&
-            lastEvent.a[0].d == iss.d) 
+        if (lastEvent.a?.length == 1 && 
+            lastEvent.a[0]?.i == iss.i &&
+            lastEvent.a[0]?.s == iss.s &&
+            lastEvent.a[0]?.d == iss.d) 
         {
             sn = sner.num;
             dig  = hab.state.p;
@@ -360,10 +360,10 @@ export class Credentials {
         // check if last event already has the anchor in it
         // and avoid creating a new event if it does
         const lastEvent = events[events.length - 1];
-        if (lastEvent.a.length == 1 && 
-            lastEvent.a[0].i == rev.i &&
-            lastEvent.a[0].s == rev.s &&
-            lastEvent.a[0].d == rev.d) 
+        if (lastEvent.a?.length == 1 && 
+            lastEvent.a[0]?.i == rev.i &&
+            lastEvent.a[0]?.s == rev.s &&
+            lastEvent.a[0]?.d == rev.d) 
         {
             sn = sner.num;
             dig  = state.p;
@@ -654,10 +654,10 @@ export class Registries {
             // check if last event already has the anchor in it
             // and avoid creating a new event if it does
             const lastEvent = events[events.length - 1];
-            if (lastEvent.a.length == 1 && 
-                lastEvent.a[0].i == regser.pre &&
-                lastEvent.a[0].s == '0' &&
-                lastEvent.a[0].d == regser.pre) 
+            if (lastEvent.a?.length == 1 && 
+                lastEvent.a[0]?.i == regser.pre &&
+                lastEvent.a[0]?.s == '0' &&
+                lastEvent.a[0]?.d == regser.pre) 
             {
                 sn = sner.num
                 dig  = state.p;

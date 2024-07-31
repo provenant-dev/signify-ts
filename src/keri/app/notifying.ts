@@ -20,14 +20,26 @@ export class Notifications {
      * @async
      * @param {number} [start=0] Start index of list of notifications, defaults to 0
      * @param {number} [end=24] End index of list of notifications, defaults to 24
+     * @param {boolean} [read] Optional filter for read status
+     * @param {string} [route] Optional filter for route
+     * @param {string} [order] Optional order of the list. Can be 'asc' or 'desc'
      * @returns {Promise<any>} A promise to the list of notifications
      */
-    async list(start: number = 0, end: number = 24): Promise<any> {
+    async list(start: number = 0, end: number = 24, read?: boolean|undefined, route?: string|undefined, order?: string|undefined): Promise<any> {
         const extraHeaders = new Headers();
         extraHeaders.append('Range', `notes=${start}-${end}`);
-
-        const path = `/notifications`;
-        const method = 'GET';
+        const params = new URLSearchParams();
+        if (read !== undefined) {
+            params.append('read', read.toString());
+        }
+        if (route !== undefined ) {
+            params.append('route', route);
+        }
+        if (order !== undefined ) {
+            params.append('order', order);
+        }
+        const path = `/notifications` + '?' + params.toString();
+        const method = 'GET';        
         const res = await this.client.fetch(path, method, null, extraHeaders);
 
         const cr = res.headers.get('content-range');

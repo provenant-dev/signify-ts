@@ -24,8 +24,8 @@ const { vleiServerUrl } = resolveEnvironment();
 const QVI_SCHEMA_SAID = 'EBfdlu8R27Fbx-ehrqwImnK-8Cm79sqbAQ4MmvEAYqao';
 const LE_SCHEMA_SAID = 'ENPXp1vQzRF6JwIuS-mp2U8Uf1MoADoP_GqQ62VsDZWY';
 const TN_SCHEMA_SAID = 'EGEebb1pVRcZ6OXHlYitl5DNh-LDrMWPwRtstiKiDhRy';
-const GCD_SCHEMA_SAID = 'EGXReFvL0ZPJx5CXSIK4R5-cMFnO4XS30u9p-JZ4cKI3';
-const VVP_DOSSIER_SCHEMA_SAID = 'EL3mANFohCJSfsZVc3jrqIKEZsLC-KdCC455UCOGPWGi';
+const GCD_SCHEMA_SAID = 'EAb4sF9w3CrkrcFxbKWcR0QSftF74FKUN6wHrjBTNuRx';
+const VVP_DOSSIER_SCHEMA_SAID = 'ENqfM_0nrtWIC9DZxBRm4xjXMhqA8_epmbA2drUr2XNJ';
 
 const vLEIServerHostUrl = `${vleiServerUrl}/oobi`;
 const QVI_SCHEMA_URL = `${vLEIServerHostUrl}/${QVI_SCHEMA_SAID}`;
@@ -124,26 +124,26 @@ beforeAll(async () => {
     ]);
 });
 
-afterAll(async () => {
-    await assertOperations(
-        qviClient,
-        regLar1Client,
-        regAlloc1Client,
-        shellLar1Client,
-        shellLar2Client,
-        shellAlloc1Client,
-        shellDelSigClient
-    );
-    await assertNotifications(
-        qviClient,
-        regLar1Client,
-        regAlloc1Client,
-        shellLar1Client,
-        shellLar2Client,
-        shellAlloc1Client,
-        shellDelSigClient
-    );
-});
+// afterAll(async () => {
+//     await assertOperations(
+//         qviClient,
+//         regLar1Client,
+//         regAlloc1Client,
+//         shellLar1Client,
+//         shellLar2Client,
+//         shellAlloc1Client,
+//         shellDelSigClient
+//     );
+//     await assertNotifications(
+//         qviClient,
+//         regLar1Client,
+//         regAlloc1Client,
+//         shellLar1Client,
+//         shellLar2Client,
+//         shellAlloc1Client,
+//         shellDelSigClient
+//     );
+// });
 
 test('voice protocol credentials', async () => {
     await step('Resolve schema oobis', async () => {
@@ -217,7 +217,7 @@ test('voice protocol credentials', async () => {
         return registry;
     });
 
-    const qviCredentialId = await step('create QVI credential', async () => {
+    const qviCredentialId = await step('Create QVI credential', async () => {
         const vcdata = {
             LEI: '549300QME1XNVC6E2R42',
         };
@@ -709,11 +709,11 @@ test('voice protocol credentials', async () => {
     });
 
     const shellGroupAuthCredentialId = await step(
-        'Shell LARs create Shell allocator group auth credential',
+        'Shell LARs create Shell allocator-group-auth credential',
         async () => {
-            // const shellLeCredential = await shellLar1Client
-            //     .credentials()
-            //     .get(shellLeCredentialId);
+            const shellLeCredential = await shellLar1Client
+                .credentials()
+                .get(shellLeCredentialId);
 
             let shellLeRegistries = await shellLar1Client.registries().list(shellLeAid.name);
             let shellLeRegistry: { name: string; regk: string } = shellLeRegistries[0];
@@ -754,16 +754,17 @@ test('voice protocol credentials', async () => {
                     useStdIfPossible: "Issuers agree that if it is reasonable to express a constraint in one of the pre-defined ways, they will do so, rather than expressing the constraint in a note or in a custom field. This allows verifiers to be confident that when one of the pre-defined constraints is absent, delegated authority is unconstrained in its corresponding dimension.",
                     onlyDelegateHeldAuthority: "Issuers agree to only delegate authority that they reasonably believe they hold. Whether they do in fact hold that authority is still a matter for verifiers to evaluate (e.g., via edges or separate proving interactions), but this rule creates a modest accountability for data quality."
                 })[1],
-                // source: Saider.saidify({
-                //     d: '',
-                //     le: {
-                //         n: shellLeCredential.sad.d,
-                //         s: shellLeCredential.sad.s,
-                //     },
-                // })[1],
+                source: Saider.saidify({
+                    d: '',
+                    issuer: {
+                        n: shellLeCredential.sad.d,
+                        s: shellLeCredential.sad.s,
+                        o: 'I2I'
+                    },
+                })[1]
             });
 
-            console.log("Shell Allocator group authz credential created: ", result)
+            console.log("Shell Allocator-group-authz credential: ", result)
 
             await waitOperation(shellLar1Client, result.op);
             return result.acdc.ked.d;
@@ -825,7 +826,7 @@ test('voice protocol credentials', async () => {
         const allocGroupAuthCredential = await retry(async () =>
             shellAlloc1Client.credentials().get(shellGroupAuthCredentialId)
         );
-        console.log("Shell allocator group auth credential created: ", JSON.stringify(allocGroupAuthCredential))
+        console.log("Shell allocator-group-auth credential: ", JSON.stringify(allocGroupAuthCredential))
 
         assert.equal(allocGroupAuthCredential.sad.s, GCD_SCHEMA_SAID);
         assert.equal(allocGroupAuthCredential.sad.i, shellLeAid.prefix);
@@ -935,7 +936,7 @@ test('voice protocol credentials', async () => {
         const tnCredential = await retry(async () =>
             shellAlloc1Client.credentials().get(shellTnCredentialId)
         );
-        console.log("Shell TN credential created: ", JSON.stringify(tnCredential))
+        console.log("Shell TN credential: ", JSON.stringify(tnCredential))
 
         assert.equal(tnCredential.sad.s, TN_SCHEMA_SAID);
         assert.equal(tnCredential.sad.i, regLeAid.prefix);
@@ -1001,7 +1002,7 @@ test('voice protocol credentials', async () => {
         }
     );
 
-    await step('Shell delegated signer credential IPEX grant', async () => {
+    await step('Shell delegated signer credential IPEX grant by allocator', async () => {
         const dt = createTimestamp();
         const shellDelegSignerCredential = await shellAlloc1Client
             .credentials()
@@ -1043,6 +1044,9 @@ test('voice protocol credentials', async () => {
             const shellDelegSignerCredential = await shellAlloc1Client
                 .credentials()
                 .get(shellDelegSignerCredentialId);
+            const shellLeCredential = await shellAlloc1Client
+                .credentials()
+                .get(shellLeCredentialId);
 
             let shellAllocRegistries = await shellAlloc1Client.registries().list(shellAllocAid.name);
             let shellAllocRegistry: { name: string; regk: string } = shellAllocRegistries[0];
@@ -1057,13 +1061,20 @@ test('voice protocol credentials', async () => {
                 rules: undefined,
                 source: Saider.saidify({
                     d: '',
+                    vetting: {
+                        n: shellLeCredential.sad.d,
+                        s: shellLeCredential.sad.s,
+                        o: 'NI2I'
+                    },
                     alloc: {
                         n: shellGroupAuthCredential.sad.d,
                         s: shellGroupAuthCredential.sad.s,
+                        o: 'I2I'
                     },
                     tnalloc: {
                         n: shellTnCredential.sad.d,
                         s: shellTnCredential.sad.s,
+                        o: 'I2I'
                     },
                     delsig: {
                         n: shellDelegSignerCredential.sad.d,
@@ -1073,7 +1084,7 @@ test('voice protocol credentials', async () => {
                 })[1]
             });
 
-            console.log("Shell Dossier credential created: ", result)
+            console.log("Shell allocator created dossier credential: ", result)
 
             await waitOperation(shellAlloc1Client, result.op);
             return result.acdc.ked.d;

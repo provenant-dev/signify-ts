@@ -50,6 +50,7 @@ async function createAid(client: SignifyClient, name: string): Promise<Aid> {
 }
 
 // Boot clients
+// gar
 // qar
 // qvi
 // regulator - LAR1, regAlloc
@@ -144,7 +145,7 @@ afterAll(async () => {
     );
 });
 
-test('single signature credentials', async () => {
+test('voice protocol credentials', async () => {
     await step('Resolve schema oobis', async () => {
         await Promise.all([
             resolveOobi(qviClient, QVI_SCHEMA_URL),
@@ -1079,7 +1080,7 @@ test('single signature credentials', async () => {
         }
     );
 
-    await step('Shell delegated signer credential IPEX grant', async () => {
+    await step('Shell has dossier credential', async () => {
         const dossierCredential = await retry(async () =>
             shellAlloc1Client.credentials().get(shellDossierCredentialId)
         );

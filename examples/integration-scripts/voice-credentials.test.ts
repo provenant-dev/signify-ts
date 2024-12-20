@@ -23,14 +23,14 @@ const { vleiServerUrl } = resolveEnvironment();
 
 const QVI_SCHEMA_SAID = 'EBfdlu8R27Fbx-ehrqwImnK-8Cm79sqbAQ4MmvEAYqao';
 const LE_SCHEMA_SAID = 'ENPXp1vQzRF6JwIuS-mp2U8Uf1MoADoP_GqQ62VsDZWY';
-const TN_SCHEMA_SAID = 'EGEebb1pVRcZ6OXHlYitl5DNh-LDrMWPwRtstiKiDhRy';
-const GCD_SCHEMA_SAID = 'EAb4sF9w3CrkrcFxbKWcR0QSftF74FKUN6wHrjBTNuRx';
-const VVP_DOSSIER_SCHEMA_SAID = 'ENqfM_0nrtWIC9DZxBRm4xjXMhqA8_epmbA2drUr2XNJ';
+const TN_ALLOC_SCHEMA_SAID = 'EFvnoHDY7I-kaBBeKlbDbkjG4BaI0nKLGadxBdjMGgSQ';
+const GCD_SCHEMA_SAID = 'ECnqJbobR55khlcL0xC5kpz3XMLVxKiDzQQQdgaJJTUG';
+const VVP_DOSSIER_SCHEMA_SAID = 'ECSETW93B53soVrfn6r_Fry4AXGQwP8NvPBAPKpw8DSS';
 
 const vLEIServerHostUrl = `${vleiServerUrl}/oobi`;
 const QVI_SCHEMA_URL = `${vLEIServerHostUrl}/${QVI_SCHEMA_SAID}`;
 const LE_SCHEMA_URL = `${vLEIServerHostUrl}/${LE_SCHEMA_SAID}`;
-const TN_SCHEMA_URL = `${vLEIServerHostUrl}/${TN_SCHEMA_SAID}`;
+const TN_SCHEMA_URL = `${vLEIServerHostUrl}/${TN_ALLOC_SCHEMA_SAID}`;
 const GCD_SCHEMA_URL = `${vLEIServerHostUrl}/${GCD_SCHEMA_SAID}`;
 const VVP_DOSSIER_SCHEMA_URL = `${vLEIServerHostUrl}/${VVP_DOSSIER_SCHEMA_SAID}`;
 
@@ -542,6 +542,67 @@ test('voice protocol credentials', async () => {
         assert.equal(legalEntityCredential.sad.a.i, regLeAid.prefix);
     });
 
+    const regAllocRegistry = await step('Create Regulator allocator registry', async () => {
+        const regAllocRegName = 'reg-alloc1-registry';
+
+        const regResult = await regAlloc1Client
+            .registries()
+            .create({ name: regAlloc1Aid.name, registryName: regAllocRegName });
+
+        await waitOperation(regAlloc1Client, await regResult.op());
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        let registries = await regAlloc1Client.registries().list(regAlloc1Aid.name);
+        const registry: { name: string; regk: string } = registries[0];
+        assert.equal(registries.length, 1);
+        assert.equal(registry.name, regAllocRegName);
+
+        return registry;
+    });
+
+    const regTnAllocCredentialId = await step(
+        'Regulator self issue TN-Alloc credential',
+        async () => {
+            const result = await regAlloc1Client.credentials().issue({
+                issuerName: regAlloc1Aid.name,
+                recipient: regAlloc1Aid.prefix,
+                registryId: regAllocRegistry.regk,
+                schemaId: TN_ALLOC_SCHEMA_SAID,
+                privacy: true,
+                data: {
+                    numbers: {
+                        rangeStart: '+1801361000',
+                        rangeEnd: '+1801361100',
+                    },
+                    channel: "voice",
+                    doNotOriginate: false,
+                    // // optional attributes
+                    // startDate: "2024-12-25T20:20:39+00:00",
+                    // endDate: "2024-11-29T20:20:39+00:00"
+                },
+                rules: Saider.saidify({
+                    d: '',
+                    perBrand: "Issuees agree not to share the phone number with other brands which may have a common owner but which will make it difficult to consistently identify the originator of traffic."
+                })[1],
+                // // // edge section is option, 
+                source: undefined
+                // source: Saider.saidify({
+                //     d: '',
+                //     // tnalloc: {
+                //     //     n: tnAllocCredential.sad.d,
+                //     //     s: tnAllocCredential.sad.s,
+                //     // },
+                //     // issuer: {
+                //     //     n: leCredential.sad.d,
+                //     //     s: leCredential.sad.s,
+                //     // },
+                // })[1],
+            });
+
+            await waitOperation(regAlloc1Client, result.op);
+            return result.acdc.ked.d;
+        }
+    );
+
     const shellLeCredentialId = await step(
         'QVI create Shell LE credential',
         async () => {
@@ -834,20 +895,23 @@ test('voice protocol credentials', async () => {
     });
 
     const shellTnCredentialId = await step(
-        'Regulator create Shell TN credential',
+        'Regulator create Shell TN-Alloc credential',
         async () => {
             const regLeCredential = await regLar1Client
                 .credentials()
                 .get(regLeCredentialId);
+            const regTnAllocCredential = await regAlloc1Client
+                .credentials()
+                .get(regTnAllocCredentialId);
+            
+            let regAlloc1Registries = await regAlloc1Client.registries().list(regAlloc1Aid.name);
+            let regAlloc1Registry: { name: string; regk: string } = regAlloc1Registries[0];
 
-            let regLeRegistries = await regLar1Client.registries().list(regLeAid.name);
-            let regLeRegistry: { name: string; regk: string } = regLeRegistries[0];
-
-            const result = await regLar1Client.credentials().issue({
-                issuerName: regLeAid.name,
+            const result = await regAlloc1Client.credentials().issue({
+                issuerName: regAlloc1Aid.name,
                 recipient: shellAllocAid.prefix,
-                registryId: regLeRegistry.regk,
-                schemaId: TN_SCHEMA_SAID,
+                registryId: regAlloc1Registry.regk,
+                schemaId: TN_ALLOC_SCHEMA_SAID,
                 privacy: true,
                 data: {
                     numbers: {
@@ -856,40 +920,38 @@ test('voice protocol credentials', async () => {
                     },
                     channel: "voice",
                     doNotOriginate: false,
-                    startDate: "2024-12-25T20:20:39+00:00",
-                    endDate: "2024-11-29T20:20:39+00:00"
+                    // // optional attributes
+                    // startDate: "2024-12-25T20:20:39+00:00",
+                    // endDate: "2024-11-29T20:20:39+00:00"
                 },
                 rules: Saider.saidify({
                     d: '',
                     perBrand: "Issuees agree not to share the phone number with other brands which may have a common owner but which will make it difficult to consistently identify the originator of traffic."
-                    // perBrand: {
-                    //     l: 'Issuees agree not to share the phone number with other brands which may have a common owner but which will make it difficult to consistently identify the originator of traffic.',
-                    // },
-
                 })[1],
                 source: Saider.saidify({
                     d: '',
-                    le: {
-                        n: regLeCredential.sad.d,
-                        s: regLeCredential.sad.s,
+                    tnalloc: {
+                        n: regTnAllocCredential.sad.d,
+                        s: regTnAllocCredential.sad.s,
+                        o: 'I2I'
                     },
                 })[1],
             });
 
-            await waitOperation(regLar1Client, result.op);
+            await waitOperation(regAlloc1Client, result.op);
             return result.acdc.ked.d;
         }
     );
 
     await step('Shell TN-Allocation credential IPEX grant by regulator', async () => {
         const dt = createTimestamp();
-        const shellTnCredential = await regLar1Client
+        const shellTnCredential = await regAlloc1Client
             .credentials()
             .get(shellTnCredentialId);
         assert(shellTnCredential !== undefined);
 
-        const [grant, gsigs, gend] = await regLar1Client.ipex().grant({
-            senderName: regLeAid.name,
+        const [grant, gsigs, gend] = await regAlloc1Client.ipex().grant({
+            senderName: regAlloc1Aid.name,
             acdc: new Serder(shellTnCredential.sad),
             anc: new Serder(shellTnCredential.anc),
             iss: new Serder(shellTnCredential.iss),
@@ -898,12 +960,12 @@ test('voice protocol credentials', async () => {
             datetime: dt,
         });
 
-        let op = await regLar1Client
+        let op = await regAlloc1Client
             .ipex()
-            .submitGrant(regLeAid.name, grant, gsigs, gend, [
+            .submitGrant(regAlloc1Aid.name, grant, gsigs, gend, [
                 shellAllocAid.prefix,
             ]);
-        await waitOperation(regLar1Client, op);
+        await waitOperation(regAlloc1Client, op);
     });
 
     await step('Shell TN-Allocation credential IPEX admit by allocator', async () => {
@@ -925,7 +987,7 @@ test('voice protocol credentials', async () => {
         let op = await shellAlloc1Client
             .ipex()
             .submitAdmit(shellAllocAid.name, admit, sigs, aend, [
-                regLeAid.prefix,
+                regAlloc1Aid.prefix,
             ]);
         await waitOperation(shellAlloc1Client, op);
 
@@ -938,8 +1000,8 @@ test('voice protocol credentials', async () => {
         );
         console.log("Shell TN credential: ", JSON.stringify(tnCredential))
 
-        assert.equal(tnCredential.sad.s, TN_SCHEMA_SAID);
-        assert.equal(tnCredential.sad.i, regLeAid.prefix);
+        assert.equal(tnCredential.sad.s, TN_ALLOC_SCHEMA_SAID);
+        assert.equal(tnCredential.sad.i, regAlloc1Aid.prefix);
         assert.equal(tnCredential.sad.a.i, shellAllocAid.prefix);
     });
 

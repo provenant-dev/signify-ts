@@ -25,7 +25,7 @@ const QVI_SCHEMA_SAID = 'EBfdlu8R27Fbx-ehrqwImnK-8Cm79sqbAQ4MmvEAYqao';
 const LE_SCHEMA_SAID = 'ENPXp1vQzRF6JwIuS-mp2U8Uf1MoADoP_GqQ62VsDZWY';
 const TN_ALLOC_SCHEMA_SAID = 'EFvnoHDY7I-kaBBeKlbDbkjG4BaI0nKLGadxBdjMGgSQ';
 const GCD_SCHEMA_SAID = 'ECnqJbobR55khlcL0xC5kpz3XMLVxKiDzQQQdgaJJTUG';
-const VVP_DOSSIER_SCHEMA_SAID = 'ECSETW93B53soVrfn6r_Fry4AXGQwP8NvPBAPKpw8DSS';
+const VVP_DOSSIER_SCHEMA_SAID = 'ENcXlEByTc3u3U4f54fNBHVksnloUxSbVfCd6bAMzNGX';
 
 const vLEIServerHostUrl = `${vleiServerUrl}/oobi`;
 const QVI_SCHEMA_URL = `${vLEIServerHostUrl}/${QVI_SCHEMA_SAID}`;
@@ -1118,7 +1118,6 @@ test('voice protocol credentials', async () => {
                 registryId: shellAllocRegistry.regk,
                 schemaId: VVP_DOSSIER_SCHEMA_SAID,
                 data: {
-                    LEI: '549300QME1XNVC6ESHEL'
                 },
                 rules: undefined,
                 source: Saider.saidify({

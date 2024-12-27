@@ -24,8 +24,8 @@ const { vleiServerUrl } = resolveEnvironment();
 const QVI_SCHEMA_SAID = 'EBfdlu8R27Fbx-ehrqwImnK-8Cm79sqbAQ4MmvEAYqao';
 const LE_SCHEMA_SAID = 'ENPXp1vQzRF6JwIuS-mp2U8Uf1MoADoP_GqQ62VsDZWY';
 const TN_ALLOC_SCHEMA_SAID = 'EFvnoHDY7I-kaBBeKlbDbkjG4BaI0nKLGadxBdjMGgSQ';
-const GCD_SCHEMA_SAID = 'ECnqJbobR55khlcL0xC5kpz3XMLVxKiDzQQQdgaJJTUG';
-const VVP_DOSSIER_SCHEMA_SAID = 'ENcXlEByTc3u3U4f54fNBHVksnloUxSbVfCd6bAMzNGX';
+const GCD_SCHEMA_SAID = 'EL7irIKYJL9Io0hhKSGWI4OznhwC7qgJG5Qf4aEs6j0o';
+const VVP_DOSSIER_SCHEMA_SAID = 'EFv3_L64_xNhOGQkaAHQTI-lzQYDvlaHcuZbuOTuDBXj';
 
 const vLEIServerHostUrl = `${vleiServerUrl}/oobi`;
 const QVI_SCHEMA_URL = `${vLEIServerHostUrl}/${QVI_SCHEMA_SAID}`;
@@ -784,7 +784,7 @@ test('voice protocol credentials', async () => {
                 recipient: shellAllocAid.prefix,
                 registryId: shellLeRegistry.regk,
                 schemaId: GCD_SCHEMA_SAID,
-                privacy: true,
+                privacy: true,      // // as nonce "u" is optional, if not provided, it will be considered as false
                 data: {
                     role: "TN Allocator",
                     c_goal: [
@@ -903,7 +903,7 @@ test('voice protocol credentials', async () => {
             const regTnAllocCredential = await regAlloc1Client
                 .credentials()
                 .get(regTnAllocCredentialId);
-            
+
             let regAlloc1Registries = await regAlloc1Client.registries().list(regAlloc1Aid.name);
             let regAlloc1Registry: { name: string; regk: string } = regAlloc1Registries[0];
 
@@ -1020,7 +1020,7 @@ test('voice protocol credentials', async () => {
                 recipient: shellDelSigAid.prefix,
                 registryId: shellAllocRegistry.regk,
                 schemaId: GCD_SCHEMA_SAID,
-                privacy: true,
+                privacy: false,     // // as nonce "u" is optional, if not provided, it will be considered as false
                 data: {
                     role: "Delegated Voice Call Signer",
                     c_goal: [

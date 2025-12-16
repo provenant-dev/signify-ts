@@ -78,8 +78,8 @@ describe('Serder', () => {
         assert.equal(
             serder.raw,
             '{"v":"KERI10JSON0000d3_","t":"icp","d":"","i":"","s":"0","kt":"1","k":' +
-                '["DAUDqkmn-hqlQKD8W-FAEa5JUvJC2I9yarEem-AAEg3e"],"nt":"1",' +
-                '"n":["EAKUR-LmLHWMwXTLWQ1QjxHrihBmwwrV2tYaSG7hOrWj"],"bt":"0","b":[],"c":[],"a":[]}'
+            '["DAUDqkmn-hqlQKD8W-FAEa5JUvJC2I9yarEem-AAEg3e"],"nt":"1",' +
+            '"n":["EAKUR-LmLHWMwXTLWQ1QjxHrihBmwwrV2tYaSG7hOrWj"],"bt":"0","b":[],"c":[],"a":[]}'
         );
         let aid0 = new Prefixer({ code: MtrDex.Ed25519 }, ked0);
         assert.equal(aid0.code, MtrDex.Ed25519);
@@ -92,4 +92,31 @@ describe('Serder', () => {
         aid0 = new Prefixer({ code: MtrDex.Blake3_256 }, ked0);
         assert.equal(aid0.qb64, 'ECHOi6qRaswNpvytpCtpvEh2cB2aLAwVHBLFinno3YVW');
     });
+
+    it('should interpret Serder sequence number correctly from event data', async () => {
+        await libsodium.ready;
+
+        const ked = {
+            v: 'KERI10JSON00013b_',
+            t: Ilks.ixn,
+            d: 'EISfGQrKJscFXScIV_n2pMzvZuBiSZtMxP0E64sAq6p3',
+            i: 'ED88Jn6CnWpNbSYz6vp9DOSpJH2_Di5MSwWTf1l34JJm',
+            s: '39',
+            p: 'EMF5t6OYToET4JD11FkU9Axtsp_w8Su2rtJ8Wbuev-6U',
+            a: [
+                {
+                    i: 'EN9r-cXzNm72-rPyPUzLTgfsXQ6IJn_TvQGqANRFEo5_',
+                    s: '0',
+                    d: 'EGwYEisTlJiQUtiFJlQvbh_NC3YDrr8p8VvwgvEDozkT',
+                },
+            ],
+        };
+
+        const serder = new Serder(ked);
+
+        assert.equal(serder.sn, 57);
+        assert.equal(serder.sner.num, 57);
+        assert.equal(serder.sner.numh, '39');
+    });
+
 });

@@ -29,5 +29,10 @@ describe('THolder', () => {
         n = new CesrNumber({}, undefined, '15');
         assert.equal(n.num, 21);
         assert.equal(n.numh, '15');
+
+        n = new CesrNumber({}, '39');
+        assert.equal(n.num, 0);
+        assert.equal(n.numh, '0');
+
     });
 });

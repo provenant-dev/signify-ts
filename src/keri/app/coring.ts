@@ -222,4 +222,18 @@ export class KeyStates {
         const res = await this.client.fetch(path, method, data);
         return await res.json();
     }
+
+    /**
+     * Retriene the key state of an identifier from each witness and compare with local state of identifier
+     * @async
+     * @param {string} pre Identifier prefix
+     * @returns {Promise<any>} A promise to the key states
+     */
+    async getWitnessState(pre: string): Promise<any> {
+        const path = `/states/${pre}/watch`;
+        const data = null;
+        const method = 'GET';
+        const res = await this.client.fetch(path, method, data);
+        return await res.json();
+    }
 }

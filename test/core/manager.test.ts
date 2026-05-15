@@ -6,19 +6,32 @@ import {
     RandyCreator,
     riKey,
     SaltyCreator,
-} from '../../src/keri/core/manager';
-import { strict as assert } from 'assert';
-import { MtrDex } from '../../src/keri/core/matter';
-import { Salter, Tier } from '../../src/keri/core/salter';
-import { Signer } from '../../src/keri/core/signer';
-import { Encrypter } from '../../src/keri/core/encrypter';
-import { Decrypter } from '../../src/keri/core/decrypter';
-import { Cipher } from '../../src/keri/core/cipher';
-import { Verfer } from '../../src/keri/core/verfer';
-import { Diger } from '../../src/keri/core/diger';
-import { Siger } from '../../src/keri/core/siger';
-import { b } from '../../src/keri/core/core';
-import { Cigar } from '../../src/keri/core/cigar';
+} from '../../src/keri/core/manager.ts';
+import { assert, describe, it, expect, vitest, Mocked } from 'vitest';
+import { MtrDex } from '../../src/keri/core/matter.ts';
+import { Salter, Tier } from '../../src/keri/core/salter.ts';
+import { Signer } from '../../src/keri/core/signer.ts';
+import { Encrypter } from '../../src/keri/core/encrypter.ts';
+import { Decrypter } from '../../src/keri/core/decrypter.ts';
+import { Cipher } from '../../src/keri/core/cipher.ts';
+import { Verfer } from '../../src/keri/core/verfer.ts';
+import { Diger } from '../../src/keri/core/diger.ts';
+import { Siger } from '../../src/keri/core/siger.ts';
+import { b } from '../../src/keri/core/core.ts';
+import { Cigar } from '../../src/keri/core/cigar.ts';
+import {
+    IdentifierManager,
+    IdentifierManagerParams,
+    IdentifierManagerFactory,
+    Prefixer,
+    RandyIdentifierManager,
+} from '../../src/index.ts';
+import {
+    RandyKeyState,
+    KeyState,
+    HabState,
+} from '../../src/keri/core/keyState.ts';
+import { randomUUID } from 'node:crypto';
 
 describe('RandyCreator', () => {
     it('should create sets of random signers', async () => {
@@ -158,6 +171,30 @@ const ser =
     'X1kxSPGYBWaIya3slgCOyOtlqU","toad":"0","wits":[],"cnfg":[]}-AABA' +
     'ApYcYd1cppVg7Inh2YCslWKhUwh59TrPpIoqWxN2A38NCbTljvmBPBjSGIFDBNOv' +
     'VjHpdZlty3Hgk6ilF8pVpAQ';
+
+const keystate: KeyState = {
+    s: '0',
+    d: 'a digest',
+    i: '',
+    p: '',
+    f: '',
+    dt: '',
+    et: '',
+    kt: '',
+    k: [],
+    nt: '',
+    n: [],
+    bt: '',
+    b: [],
+    c: [],
+    ee: {
+        s: '',
+        d: '',
+        br: [],
+        ba: [],
+    },
+    di: '',
+};
 
 describe('Manager', () => {
     it('should manage key pairs for identifiers', async () => {
@@ -694,5 +731,163 @@ describe('Manager', () => {
             psigs[0],
             'AACRPqO6vdXm1oSSa82rmVVHikf7NdN4JXjOWEk30Ub5JHChL0bW6DzJfA-7VlgLm_B1XR0Z61FweP87bBQpVawI'
         );
+    });
+
+    it('Should support creating and getting randy keeper', async () => {
+        const passcode = '0123456789abcdefghijk';
+        const salter = new Salter({ raw: b(passcode) });
+
+        const manager = new IdentifierManagerFactory(salter, []);
+
+        const keeper0 = manager.new(
+            Algos.randy,
+            0,
+            {}
+        ) as RandyIdentifierManager;
+        const [keys] = await keeper0.incept(false);
+        const prefixes = new Prefixer({ qb64: keys[0] });
+
+        const keeper1 = manager.get({
+            prefix: prefixes.qb64,
+            name: '',
+            state: keystate,
+            randy: keeper0.params() as RandyKeyState,
+            transferable: false,
+            windexes: [],
+            icp_dt: '2023-12-01T10:05:25.062609+00:00',
+        });
+
+        assert(keeper0 instanceof RandyIdentifierManager);
+        assert(keeper1 instanceof RandyIdentifierManager);
+    });
+
+    it('Should throw if algo is not supported', async () => {
+        const passcode = '0123456789abcdefghijk';
+        const salter = new Salter({ raw: b(passcode) });
+
+        const manager = new IdentifierManagerFactory(salter, []);
+
+        expect(() => manager.new(randomUUID() as Algos, 0, {})).toThrow(
+            'Unknown algo'
+        );
+
+        // Just use a partial for testing purpose
+        const partialHabState: Partial<HabState> = {
+            prefix: '',
+            name: '',
+            state: keystate,
+            transferable: false,
+            windexes: [],
+            icp_dt: '2023-12-01T10:05:25.062609+00:00',
+        };
+        expect(() => manager.get(partialHabState as HabState)).toThrow(
+            'No algo specified'
+        );
+    });
+
+    describe('External Module ', () => {
+        class MockModule implements Mocked<IdentifierManager> {
+            #params: Record<string, unknown>;
+
+            constructor(
+                public pidx: number,
+                params: IdentifierManagerParams
+            ) {
+                this.#params = params;
+            }
+
+            signers: Signer[] = [];
+            sign = vitest.fn();
+            algo: Algos = Algos.extern;
+            incept = vitest.fn();
+            rotate = vitest.fn();
+            params = vitest.fn(() => this.#params);
+        }
+
+        it('Should support creating external keeper module', async () => {
+            const passcode = '0123456789abcdefghijk';
+            const salter = new Salter({ raw: b(passcode) });
+
+            const manager = new IdentifierManagerFactory(salter, [
+                { module: MockModule, name: 'mock', type: 'mock' },
+            ]);
+
+            const param = randomUUID();
+            const keeper = manager.new(Algos.extern, 0, {
+                extern_type: 'mock',
+                param,
+            });
+
+            assert(keeper instanceof MockModule);
+            expect(keeper.params()).toMatchObject({ param });
+        });
+
+        it('Should throw if external keeper module is not addede', async () => {
+            const passcode = '0123456789abcdefghijk';
+            const salter = new Salter({ raw: b(passcode) });
+
+            const manager = new IdentifierManagerFactory(salter, []);
+
+            const param = randomUUID();
+            expect(() =>
+                manager.new(Algos.extern, 0, {
+                    extern_type: 'mock',
+                    param,
+                })
+            ).toThrow('unsupported external module type mock');
+        });
+
+        it('Should support getting external keeper module', async () => {
+            const passcode = '0123456789abcdefghijk';
+            const salter = new Salter({ raw: b(passcode) });
+
+            const manager = new IdentifierManagerFactory(salter, [
+                { module: MockModule, name: 'mock', type: 'mock' },
+            ]);
+
+            const param = randomUUID();
+
+            const keeper = manager.get({
+                name: randomUUID(),
+                prefix: '',
+                state: keystate,
+                windexes: [],
+                extern: {
+                    extern_type: 'mock',
+                    pidx: 3,
+                    param,
+                },
+                transferable: true,
+                icp_dt: '2023-12-01T10:05:25.062609+00:00',
+            });
+
+            assert(keeper instanceof MockModule);
+            expect(keeper.params()).toMatchObject({ param, pidx: 3 });
+        });
+
+        it('Should throw when trying to get external keeper that is not registered', async () => {
+            const passcode = '0123456789abcdefghijk';
+            const salter = new Salter({ raw: b(passcode) });
+
+            const manager = new IdentifierManagerFactory(salter, []);
+
+            const param = randomUUID();
+
+            expect(() =>
+                manager.get({
+                    name: randomUUID(),
+                    prefix: '',
+                    state: keystate,
+                    windexes: [],
+                    extern: {
+                        extern_type: 'mock',
+                        pidx: 3,
+                        param,
+                    },
+                    transferable: true,
+                    icp_dt: '2023-12-01T10:05:25.062609+00:00',
+                })
+            ).toThrow('unsupported external module type mock');
+        });
     });
 });

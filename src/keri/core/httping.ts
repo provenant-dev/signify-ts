@@ -5,13 +5,15 @@ import {
     Item,
     Parameters,
 } from 'structured-headers';
-import { Signer } from './signer';
-import { b } from './core';
-import { Cigar } from './cigar';
-import { nowUTC } from './utils';
-import { Siger } from './siger';
-import Base64 from 'urlsafe-base64';
-import { Buffer } from 'buffer';
+import { Signer } from './signer.ts';
+import { b } from './core.ts';
+import { Cigar } from './cigar.ts';
+import { nowUTC } from './utils.ts';
+import { Siger } from './siger.ts';
+import { encodeBase64Url } from './base64.ts';
+
+export const HEADER_SIG_INPUT = normalize('Signature-Input');
+export const HEADER_SIG_TIME = normalize('Signify-Timestamp');
 
 export function normalize(header: string) {
     return header.trim();
@@ -30,9 +32,16 @@ export interface SiginputArgs {
     context?: string;
 }
 
+/**
+ * Generates, serializes, and signs a Signature-Input HTTP header value as a structured header
+ * @param signer
+ * @param sigInputArgs
+ */
 export function siginput(
     signer: Signer,
-    {
+    sigInputArgs: SiginputArgs
+): [Map<string, string>, Siger | Cigar] {
+    const {
         name,
         method,
         path,
@@ -43,8 +52,7 @@ export function siginput(
         alg,
         keyid,
         context,
-    }: SiginputArgs
-): [Map<string, string>, Siger | Cigar] {
+    } = sigInputArgs;
     const items = new Array<string>();
     const ifields = new Array<[string, Map<string, string>]>();
 
@@ -107,7 +115,7 @@ export function siginput(
 
     return [
         new Map<string, string>([
-            ['Signature-Input', `${serializeDictionary(sid as Dictionary)}`],
+            [HEADER_SIG_INPUT, `${serializeDictionary(sid as Dictionary)}`],
         ]),
         sig,
     ];
@@ -121,7 +129,7 @@ export class Unqualified {
     }
 
     get qb64(): string {
-        return Base64.encode(Buffer.from(this._raw));
+        return encodeBase64Url(this._raw);
     }
 
     get qb64b(): Uint8Array {

@@ -1,18 +1,20 @@
-import { Tier } from '../core/salter';
-import { Algos } from '../core/manager';
-import { incept, interact, reply, rotate } from '../core/eventing';
-import { b, Ilks, Serials, Versionage } from '../core/core';
-import { Tholder } from '../core/tholder';
-import { MtrDex } from '../core/matter';
-import { Serder } from '../core/serder';
-import { parseRangeHeaders } from '../core/httping';
-import { KeyManager } from '../core/keeping';
+import { Tier } from '../core/salter.ts';
+import { Algos } from '../core/manager.ts';
+import { incept, interact, reply, rotate } from '../core/eventing.ts';
+import { b, Ilks, Serials, Vrsn_1_0 } from '../core/core.ts';
+import { Tholder } from '../core/tholder.ts';
+import { MtrDex } from '../core/matter.ts';
+import { Serder } from '../core/serder.ts';
+import { parseRangeHeaders } from '../core/httping.ts';
+import { IdentifierManagerFactory } from '../core/keeping.ts';
+import { HabState } from '../core/keyState.ts';
+import { components } from '../../types/keria-api-schema.ts';
 
 /** Arguments required to create an identfier */
 export interface CreateIdentiferArgs {
     transferable?: boolean;
-    isith?: string | number | string[];
-    nsith?: string | number | string[];
+    isith?: string | number | string[] | string[][];
+    nsith?: string | number | string[] | string[][];
     wits?: string[];
     toad?: number;
     proxy?: string;
@@ -25,9 +27,9 @@ export interface CreateIdentiferArgs {
     rstates?: any[];
     prxs?: any[];
     nxts?: any[];
-    mhab?: any;
-    keys?: any[];
-    ndigs?: any[];
+    mhab?: HabState;
+    keys?: string[];
+    ndigs?: string[];
     bran?: string;
     count?: number;
     ncount?: number;
@@ -62,8 +64,24 @@ export interface IdentifierDeps {
         headers?: Headers
     ): Promise<Response>;
     pidx: number;
-    manager: KeyManager | null;
+    manager: IdentifierManagerFactory | null;
 }
+
+/**
+ * Updatable information for a managed identifier
+ */
+export interface IdentifierInfo {
+    name: string;
+}
+
+export interface LocSchemeArgs {
+    url: string;
+    scheme?: string;
+    eid?: string;
+    stamp?: string;
+}
+
+export type GroupMembers = components['schemas']['GroupMember'];
 
 /** Identifier */
 export class Identifier {
@@ -108,14 +126,28 @@ export class Identifier {
     /**
      * Get information for a managed identifier
      * @async
-     * @param {string} name Name or alias of the identifier
-     * @returns {Promise<any>} A promise to the identifier information
+     * @param {string} name Prefix or alias of the identifier
+     * @returns {Promise<HabState>} A promise to the identifier information
      */
-    async get(name: string): Promise<any> {
-        const path = `/identifiers/${name}`;
+    async get(name: string): Promise<HabState> {
+        const path = `/identifiers/${encodeURIComponent(name)}`;
         const data = null;
         const method = 'GET';
         const res = await this.client.fetch(path, method, data);
+        return await res.json();
+    }
+
+    /**
+     * Update managed identifier
+     * @async
+     * @param {string} name Prefix or alias of the identifier
+     * @param {IdentifierInfo} info Information to update for the given identifier
+     * @returns {Promise<HabState>} A promise to the identifier information after updating
+     */
+    async update(name: string, info: IdentifierInfo): Promise<HabState> {
+        const path = `/identifiers/${name}`;
+        const method = 'PUT';
+        const res = await this.client.fetch(path, method, info);
         return await res.json();
     }
 
@@ -134,10 +166,10 @@ export class Identifier {
 
         const transferable = kargs.transferable ?? true;
         const isith = kargs.isith ?? '1';
-        const nsith = kargs.nsith ?? '1';
+        let nsith = kargs.nsith ?? '1';
         let wits = kargs.wits ?? [];
         const toad = kargs.toad ?? 0;
-        const dcode = kargs.dcode ?? MtrDex.Blake3_256;
+        let dcode = kargs.dcode ?? MtrDex.Blake3_256;
         const proxy = kargs.proxy;
         const delpre = kargs.delpre;
         const data = kargs.data != undefined ? [kargs.data] : [];
@@ -151,10 +183,16 @@ export class Identifier {
         const _ndigs = kargs.ndigs;
         const bran = kargs.bran;
         const count = kargs.count;
-        const ncount = kargs.ncount;
+        let ncount = kargs.ncount;
         const tier = kargs.tier;
         const extern_type = kargs.extern_type;
         const extern = kargs.extern;
+
+        if (!transferable) {
+            ncount = 0;
+            nsith = 0;
+            dcode = MtrDex.Ed25519N;
+        }
 
         const xargs = {
             transferable: transferable,
@@ -197,7 +235,7 @@ export class Identifier {
                 wits: wits,
                 cnfg: [],
                 data: data,
-                version: Versionage,
+                version: Vrsn_1_0,
                 kind: Serials.JSON,
                 code: dcode,
                 intive: false,
@@ -212,7 +250,7 @@ export class Identifier {
                 wits: wits,
                 cnfg: [],
                 data: data,
-                version: Versionage,
+                version: Vrsn_1_0,
                 kind: Serials.JSON,
                 code: dcode,
                 intive: false,
@@ -223,7 +261,7 @@ export class Identifier {
         const sigs = await keeper!.sign(b(serder.raw));
         const jsondata: any = {
             name: name,
-            icp: serder.ked,
+            icp: serder.sad,
             sigs: sigs,
             proxy: proxy,
             smids:
@@ -238,26 +276,41 @@ export class Identifier {
         jsondata[algo] = keeper.params();
 
         this.client.pidx = this.client.pidx + 1;
-        const res = this.client.fetch('/identifiers', 'POST', jsondata);
+        const res = await this.client.fetch('/identifiers', 'POST', jsondata);
         return new EventResult(serder, sigs, res);
     }
 
     /**
      * Generate an interaction event in a managed identifier
      * @async
-     * @param {string} name Name or alias of the identifier
+     * @param {string} name Prefix or alias of the identifier
      * @param {any} [data] Option data to be anchored in the interaction event
      * @returns {Promise<EventResult>} A promise to the interaction event result
      */
     async interact(name: string, data?: any): Promise<EventResult> {
+        const { serder, sigs, jsondata } = await this.createInteract(
+            name,
+            data
+        );
+
+        const res = await this.client.fetch(
+            '/identifiers/' + name + '/events',
+            'POST',
+            jsondata
+        );
+        return new EventResult(serder, sigs, res);
+    }
+
+    async createInteract(
+        name: string,
+        data?: any
+    ): Promise<{ serder: any; sigs: any; jsondata: any }> {
         const hab = await this.get(name);
         const pre: string = hab.prefix;
 
         const state = hab.state;
-        const sn = Number(state.s);
+        const sn = parseInt(state.s, 16);
         const dig = state.d;
-
-        data = Array.isArray(data) ? data : [data];
 
         data = Array.isArray(data) ? data : [data];
 
@@ -273,17 +326,11 @@ export class Identifier {
         const sigs = await keeper.sign(b(serder.raw));
 
         const jsondata: any = {
-            ixn: serder.ked,
+            ixn: serder.sad,
             sigs: sigs,
         };
         jsondata[keeper.algo] = keeper.params();
-
-        const res = await this.client.fetch(
-            '/identifiers/' + name + '?type=ixn',
-            'PUT',
-            jsondata
-        );
-        return new EventResult(serder, sigs, res);
+        return { serder, sigs, jsondata };
     }
 
     /**
@@ -307,7 +354,7 @@ export class Identifier {
         const state = hab.state;
         const count = state.k.length;
         const dig = state.d;
-        const ridx = Number(state.s) + 1;
+        const ridx = parseInt(state.s, 16) + 1;
         const wits = state.b;
         let isith = state.nt;
 
@@ -363,7 +410,7 @@ export class Identifier {
         const sigs = await keeper.sign(b(serder.raw));
 
         const jsondata: any = {
-            rot: serder.ked,
+            rot: serder.sad,
             sigs: sigs,
             smids:
                 states != undefined
@@ -377,8 +424,8 @@ export class Identifier {
         jsondata[keeper.algo] = keeper.params();
 
         const res = await this.client.fetch(
-            '/identifiers/' + name,
-            'PUT',
+            '/identifiers/' + name + '/events',
+            'POST',
             jsondata
         );
         return new EventResult(serder, sigs, res);
@@ -409,11 +456,11 @@ export class Identifier {
         const sigs = await keeper.sign(b(rpy.raw));
 
         const jsondata = {
-            rpy: rpy.ked,
+            rpy: rpy.sad,
             sigs: sigs,
         };
 
-        const res = this.client.fetch(
+        const res = await this.client.fetch(
             '/identifiers/' + name + '/endroles',
             'POST',
             jsondata
@@ -447,12 +494,54 @@ export class Identifier {
     }
 
     /**
+     * Authorises a new location scheme (endpoint) for a particular endpoint identifier.
+     * @param {LocSchemeArgs} args
+     * @param name Name or alias of the identifier to sign reply message
+     * @param args Arguments to create authorising reply message from
+     * @returns A promise to the result of the authorization
+     */
+    async addLocScheme(
+        name: string,
+        args: LocSchemeArgs
+    ): Promise<EventResult> {
+        const { url, scheme, eid, stamp } = args;
+        const hab = await this.get(name);
+
+        const rpyData = {
+            eid: eid ?? hab.prefix,
+            url,
+            scheme: scheme ?? 'http',
+        };
+        const rpy = reply(
+            '/loc/scheme',
+            rpyData,
+            stamp,
+            undefined,
+            Serials.JSON
+        );
+
+        const keeper = this.client.manager!.get(hab);
+        const sigs = await keeper.sign(b(rpy.raw));
+
+        const jsondata = {
+            rpy: rpy.sad,
+            sigs: sigs,
+        };
+        const res = await this.client.fetch(
+            '/identifiers/' + name + '/locschemes',
+            'POST',
+            jsondata
+        );
+        return new EventResult(rpy, sigs, res);
+    }
+
+    /**
      * Get the members of a group identifier
      * @async
      * @param {string} name - Name or alias of the identifier
-     * @returns {Promise<any>} - A promise to the list of members
+     * @returns {Promise<GroupMembers>} - A promise to the list of members
      */
-    async members(name: string): Promise<any> {
+    async members(name: string): Promise<GroupMembers> {
         const res = await this.client.fetch(
             '/identifiers/' + name + '/members',
             'GET',
@@ -466,16 +555,12 @@ export class Identifier {
 export class EventResult {
     private readonly _serder: Serder;
     private readonly _sigs: string[];
-    private readonly promise: Promise<Response> | Response;
+    private readonly response: Response;
 
-    constructor(
-        serder: Serder,
-        sigs: string[],
-        promise: Promise<Response> | Response
-    ) {
+    constructor(serder: Serder, sigs: string[], response: Response) {
         this._serder = serder;
         this._sigs = sigs;
-        this.promise = promise;
+        this.response = response;
     }
 
     get serder() {
@@ -487,7 +572,6 @@ export class EventResult {
     }
 
     async op(): Promise<any> {
-        const res = await this.promise;
-        return await res.json();
+        return await this.response.json();
     }
 }

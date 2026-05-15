@@ -1,34 +1,33 @@
-import { strict as assert } from 'assert';
+import { assert, describe, it, expect, beforeEach, vitest } from 'vitest';
 import {
     CreateIdentiferArgs,
     RotateIdentifierArgs,
-} from '../../src/keri/app/aiding';
-import { Algos } from '../../src/keri/core/manager';
+} from '../../src/keri/app/aiding.ts';
+import { Algos } from '../../src/keri/core/manager.ts';
 import libsodium from 'libsodium-wrappers-sumo';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import {
     Controller,
     Identifier,
     IdentifierDeps,
-    KeyManager,
-    Tier,
+    IdentifierManagerFactory,
     randomPasscode,
-} from '../../src';
-import { createMockIdentifierState } from './test-utils';
+    Tier,
+} from '../../src/index.ts';
+import { createMockIdentifierState } from './test-utils.ts';
 
 const bran = '0123456789abcdefghijk';
 
 export class MockClient implements IdentifierDeps {
-    manager: KeyManager;
+    manager: IdentifierManagerFactory;
     controller: Controller;
     pidx = 0;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    fetch = jest.fn<Promise<Response>, [string, string, any]>();
+    fetch = vitest.fn();
 
     constructor(bran: string) {
         this.controller = new Controller(bran, Tier.low);
-        this.manager = new KeyManager(this.controller.salter);
+        this.manager = new IdentifierManagerFactory(this.controller.salter);
     }
 
     identifiers() {
@@ -57,8 +56,8 @@ describe('Aiding', () => {
         client.fetch.mockResolvedValue(Response.json({}));
         await client.identifiers().list();
         const lastCall = client.getLastMockRequest();
-        expect(lastCall.path).toEqual('/identifiers');
-        expect(lastCall.method).toEqual('GET');
+        assert.equal(lastCall.path, '/identifiers');
+        assert.equal(lastCall.method, 'GET');
     });
 
     it('Can create salty identifiers', async () => {
@@ -97,6 +96,53 @@ describe('Aiding', () => {
         assert.deepEqual(lastCall.body.salty.ncodes, ['A']);
         assert.deepEqual(lastCall.body.salty.dcode, 'E');
         assert.deepEqual(lastCall.body.salty.transferable, true);
+    });
+
+    it('Can create non-transferable salty identifiers', async () => {
+        client.fetch.mockResolvedValue(Response.json({}));
+        await client.identifiers().create('aid1', {
+            bran: '0123456789abcdefghijk',
+            transferable: false,
+        });
+
+        const lastCall = client.getLastMockRequest();
+        assert.equal(lastCall.path, '/identifiers');
+        assert.equal(lastCall.method, 'POST');
+        assert.equal(lastCall.body.name, 'aid1');
+        assert.deepEqual(lastCall.body.icp, {
+            v: 'KERI10JSON0000fd_',
+            t: 'icp',
+            d: 'EFI3s8I7M6b8iiOFJOqDfjuak9NQJtVx8N2Px_cm2lsN',
+            i: 'BPmhSfdhCPxr3EqjxzEtF8TVy0YX7ATo0Uc8oo2cnmY9',
+            s: '0',
+            kt: '1',
+            k: ['BPmhSfdhCPxr3EqjxzEtF8TVy0YX7ATo0Uc8oo2cnmY9'],
+            nt: '0',
+            n: [],
+            bt: '0',
+            b: [],
+            c: [],
+            a: [],
+        });
+        assert.deepEqual(lastCall.body.sigs, [
+            'AAD43ke-FKLzD_eOJuE7-G5jeqjs9iyirE-atbxd4sSvEn-0fRibOWI5jtvlE8b8Dn8_rVRa1BUCyDfmEXzy1uwA',
+        ]);
+        assert.deepEqual(lastCall.body.salty.pidx, 0);
+        assert.deepEqual(lastCall.body.salty.kidx, 0);
+        assert.deepEqual(lastCall.body.salty.stem, 'signify:aid');
+        assert.deepEqual(lastCall.body.salty.tier, 'low');
+        assert.deepEqual(lastCall.body.salty.icodes, ['A']);
+        assert.deepEqual(lastCall.body.salty.dcode, 'B');
+        assert.deepEqual(lastCall.body.salty.transferable, false);
+    });
+
+    it('Can get identifiers with special characters in the name', async () => {
+        client.fetch.mockResolvedValue(Response.json({}));
+        await client.identifiers().get('a name with ñ!');
+
+        const lastCall = client.getLastMockRequest();
+        assert.equal(lastCall.method, 'GET');
+        assert.equal(lastCall.path, '/identifiers/a%20name%20with%20%C3%B1!');
     });
 
     it('Can create salty AID with multiple signatures', async () => {
@@ -153,6 +199,16 @@ describe('Aiding', () => {
         assert.deepEqual(lastCall.body.salty.transferable, true);
     });
 
+    it('Should throw error if fetch call fails when creating identifier', async () => {
+        const error = new Error(`Fail ${randomUUID()}`);
+        client.fetch.mockRejectedValue(error);
+        await expect(
+            client
+                .identifiers()
+                .create('aid1', { bran: '0123456789abcdefghijk' })
+        ).rejects.toThrow(error);
+    });
+
     it('Can rotate salty identifier', async () => {
         const aid1 = await createMockIdentifierState('aid1', bran, {});
         client.fetch.mockResolvedValueOnce(Response.json(aid1));
@@ -160,8 +216,8 @@ describe('Aiding', () => {
 
         await client.identifiers().rotate('aid1');
         const lastCall = client.getLastMockRequest();
-        assert.equal(lastCall.path, '/identifiers/aid1');
-        assert.equal(lastCall.method, 'PUT');
+        assert.equal(lastCall.path, '/identifiers/aid1/events');
+        assert.equal(lastCall.method, 'POST');
         assert.deepEqual(lastCall.body.rot, {
             v: 'KERI10JSON000160_',
             t: 'rot',
@@ -191,6 +247,30 @@ describe('Aiding', () => {
         assert.deepEqual(lastCall.body.salty.transferable, true);
     });
 
+    it('Can rotate salty identifier with sn > 10', async () => {
+        const aid1 = await createMockIdentifierState('aid1', bran, {});
+        client.fetch.mockResolvedValueOnce(
+            Response.json({
+                ...aid1,
+                state: {
+                    ...aid1.state,
+                    s: 'a',
+                },
+            })
+        );
+        client.fetch.mockResolvedValueOnce(Response.json({}));
+
+        await client.identifiers().rotate('aid1');
+        const lastCall = client.getLastMockRequest();
+        assert.equal(lastCall.path, '/identifiers/aid1/events');
+        assert.equal(lastCall.method, 'POST');
+        expect(lastCall.body.rot).toMatchObject({
+            v: 'KERI10JSON000160_',
+            t: 'rot',
+            s: 'b',
+        });
+    });
+
     it('Can create interact event', async () => {
         const data = [
             {
@@ -208,8 +288,8 @@ describe('Aiding', () => {
 
         const lastCall = client.getLastMockRequest();
 
-        expect(lastCall.path).toEqual('/identifiers/aid1?type=ixn');
-        expect(lastCall.method).toEqual('PUT');
+        assert.equal(lastCall.path, '/identifiers/aid1/events');
+        assert.equal(lastCall.method, 'POST');
         expect(lastCall.body.ixn).toMatchObject({
             v: 'KERI10JSON000138_',
             t: 'ixn',
@@ -217,18 +297,45 @@ describe('Aiding', () => {
             i: 'ELUvZ8aJEHAQE-0nsevyYTP98rBbGJUrTj5an-pCmwrK',
             s: '1',
             p: 'ELUvZ8aJEHAQE-0nsevyYTP98rBbGJUrTj5an-pCmwrK',
-            a: [
-                {
-                    i: 'ELUvZ8aJEHAQE-0nsevyYTP98rBbGJUrTj5an-pCmwrK',
-                    s: 0,
-                    d: 'ELUvZ8aJEHAQE-0nsevyYTP98rBbGJUrTj5an-pCmwrK',
-                },
-            ],
+            a: data,
         });
 
         assert.deepEqual(lastCall.body.sigs, [
             'AADEzKk-5LT6vH-PWFb_1i1A8FW-KGHORtTOCZrKF4gtWkCr9vN1z_mDSVKRc6MKktpdeB3Ub1fWCGpnS50hRgoJ',
         ]);
+    });
+
+    it('Can create interact event when sequence number > 10', async () => {
+        const data = [
+            {
+                i: 'ELUvZ8aJEHAQE-0nsevyYTP98rBbGJUrTj5an-pCmwrK',
+                s: 0,
+                d: 'ELUvZ8aJEHAQE-0nsevyYTP98rBbGJUrTj5an-pCmwrK',
+            },
+        ];
+
+        const aid1 = await createMockIdentifierState('aid1', bran);
+        client.fetch.mockResolvedValueOnce(
+            Response.json({
+                ...aid1,
+                state: {
+                    ...aid1.state,
+                    s: 'a',
+                },
+            })
+        );
+        client.fetch.mockResolvedValueOnce(Response.json({}));
+
+        await client.identifiers().interact('aid1', data);
+
+        const lastCall = client.getLastMockRequest();
+
+        assert.equal(lastCall.path, '/identifiers/aid1/events');
+        assert.equal(lastCall.method, 'POST');
+        expect(lastCall.body.ixn).toMatchObject({
+            s: 'b',
+            a: data,
+        });
     });
 
     it('Can add end role', async () => {
@@ -245,6 +352,58 @@ describe('Aiding', () => {
         assert.deepEqual(lastCall.body.rpy.a, {
             cid: 'ELUvZ8aJEHAQE-0nsevyYTP98rBbGJUrTj5an-pCmwrK',
             role: 'agent',
+        });
+    });
+
+    it('Should throw error if fetch call fails when adding end role', async () => {
+        const error = new Error(`Fail ${randomUUID()}`);
+        client.fetch.mockRejectedValue(error);
+        await expect(
+            client.identifiers().addEndRole('aid1', 'agent')
+        ).rejects.toThrow(error);
+    });
+
+    it('Can authorise location/endpoint for an endpoint identifier', async () => {
+        const aid1 = await createMockIdentifierState('aid1', bran, {});
+        client.fetch.mockResolvedValueOnce(Response.json(aid1));
+        client.fetch.mockResolvedValueOnce(Response.json({}));
+
+        await client.identifiers().addLocScheme('aid1', {
+            url: 'https://test.com',
+            scheme: 'https',
+            eid: 'EHgwVwQT15OJvilVvW57HE4w0-GPs_Stj2OFoAHZSysY',
+            stamp: '2021-06-27T21:26:21.233257+00:00',
+        });
+        const lastCall = client.getLastMockRequest();
+        assert.equal(lastCall.path, '/identifiers/aid1/locschemes');
+        assert.equal(lastCall.method, 'POST');
+        assert.equal(lastCall.body.rpy.t, 'rpy');
+        assert.equal(lastCall.body.rpy.r, '/loc/scheme');
+        assert.equal(lastCall.body.rpy.dt, '2021-06-27T21:26:21.233257+00:00');
+        assert.deepEqual(lastCall.body.rpy.a, {
+            url: 'https://test.com',
+            scheme: 'https',
+            eid: 'EHgwVwQT15OJvilVvW57HE4w0-GPs_Stj2OFoAHZSysY',
+        });
+    });
+
+    it('Can authorise location/endpoint for own identifier as default', async () => {
+        const aid1 = await createMockIdentifierState('aid1', bran, {});
+        client.fetch.mockResolvedValueOnce(Response.json(aid1));
+        client.fetch.mockResolvedValueOnce(Response.json({}));
+
+        await client.identifiers().addLocScheme('aid1', {
+            url: 'http://test.com',
+        });
+        const lastCall = client.getLastMockRequest();
+        assert.equal(lastCall.path, '/identifiers/aid1/locschemes');
+        assert.equal(lastCall.method, 'POST');
+        assert.equal(lastCall.body.rpy.t, 'rpy');
+        assert.equal(lastCall.body.rpy.r, '/loc/scheme');
+        assert.deepEqual(lastCall.body.rpy.a, {
+            url: 'http://test.com',
+            scheme: 'http',
+            eid: 'ELUvZ8aJEHAQE-0nsevyYTP98rBbGJUrTj5an-pCmwrK',
         });
     });
 
@@ -269,6 +428,15 @@ describe('Aiding', () => {
         assert.deepEqual(lastCall.body.icp.s, '0');
         assert.deepEqual(lastCall.body.icp.kt, '1');
         assert.deepEqual(lastCall.body.randy.transferable, true);
+    });
+
+    it('Can rename identifier', async () => {
+        client.fetch.mockResolvedValue(Response.json({}));
+        await client.identifiers().update('aid1', { name: 'aid2' });
+        const lastCall = client.getLastMockRequest();
+        assert.equal(lastCall.path, '/identifiers/aid1');
+        assert.equal(lastCall.method, 'PUT');
+        assert.equal(lastCall.body.name, 'aid2');
     });
 
     describe('Group identifiers', () => {
@@ -306,7 +474,7 @@ describe('Aiding', () => {
                 rstates: [member1.state, member2.state],
             };
 
-            await client.identifiers().rotate(group.alias, args);
+            await client.identifiers().rotate(group.name, args);
             const request = client.getLastMockRequest();
             const body = request.body;
             expect(body).toMatchObject({
@@ -335,7 +503,7 @@ describe('Aiding', () => {
 
             client.fetch.mockResolvedValueOnce(Response.json(group));
             client.fetch.mockResolvedValueOnce(Response.json({}));
-            await client.identifiers().rotate(group.alias, {
+            await client.identifiers().rotate(group.name, {
                 nsith: '1',
                 states: [member1.state, member2.state],
                 rstates: [member1.state, member2.state],
@@ -352,8 +520,8 @@ describe('Aiding', () => {
         it('CreateIdentiferArgs', () => {
             let args: CreateIdentiferArgs;
             args = {
-                isith: 1,
-                nsith: 1,
+                isith: '1',
+                nsith: '1',
             };
             args = {
                 isith: '1',
@@ -363,6 +531,7 @@ describe('Aiding', () => {
                 isith: ['1'],
                 nsith: ['1'],
             };
+            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
             args !== null; // avoids TS6133
         });
 
@@ -377,6 +546,7 @@ describe('Aiding', () => {
             args = {
                 nsith: ['1'],
             };
+            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
             args !== null; // avoids TS6133
         });
     });

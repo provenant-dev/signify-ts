@@ -1,6 +1,6 @@
-import { Counter, CtrDex } from '../../src/keri/core/counter';
-import { strict as assert } from 'assert';
-import { b, b64ToInt, intToB64 } from '../../src/keri/core/core';
+import { Counter, CtrDex } from '../../src/keri/core/counter.ts';
+import { assert, describe, it } from 'vitest';
+import { b, b64ToInt, intToB64 } from '../../src/keri/core/core.ts';
 
 describe('int to b64 and back', () => {
     it('should encode and decode stuff', async () => {
@@ -16,7 +16,7 @@ describe('int to b64 and back', () => {
         });
 
         // verify all Codes have hs > 0 and ss > 0 and fs = hs + ss and not fs % 4
-        Counter.Sizes.forEach((val, _) => {
+        Counter.Sizes.forEach((val) => {
             assert.equal(
                 val.hs > 0 &&
                     val.ss > 0 &&

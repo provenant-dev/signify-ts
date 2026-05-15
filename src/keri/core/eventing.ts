@@ -2,23 +2,23 @@ import {
     b,
     concat,
     Dict,
-    Ident,
+    Protocols,
     Ilks,
     Serials,
     versify,
     Version,
-    Versionage,
-} from './core';
-import { Tholder } from './tholder';
-import { CesrNumber } from './number';
-import { Prefixer } from './prefixer';
-import { Serder } from './serder';
-import { MtrDex, NonTransDex } from './matter';
-import { Saider } from './saider';
-import { Siger } from './siger';
-import { Cigar } from './cigar';
-import { Counter, CtrDex } from './counter';
-import { Seqner } from './seqner';
+    Vrsn_1_0,
+} from './core.ts';
+import { Tholder } from './tholder.ts';
+import { CesrNumber } from './number.ts';
+import { Prefixer } from './prefixer.ts';
+import { Serder } from './serder.ts';
+import { MtrDex, NonTransDex } from './matter.ts';
+import { Saider } from './saider.ts';
+import { Siger } from './siger.ts';
+import { Cigar } from './cigar.ts';
+import { Counter, CtrDex } from './counter.ts';
+import { Seqner } from './seqner.ts';
 
 const MaxIntThold = 2 ** 32 - 1;
 
@@ -53,30 +53,30 @@ export function rotate({
     ndigs = undefined,
     nsith = undefined,
     wits = undefined,
-    cuts = undefined,
-    adds = undefined,
+    cuts = [],
+    adds = [],
     toad = undefined,
     data = undefined,
     version = undefined,
     kind = undefined,
     intive = true,
 }: RotateArgs) {
-    const vs = versify(Ident.KERI, version, kind, 0);
+    const vs = versify(Protocols.KERI, version, kind, 0);
     const _ilk = ilk;
     if (_ilk != Ilks.rot && _ilk != Ilks.drt) {
         throw new Error(`Invalid ilk = ${ilk} for rot or drt.`);
     }
 
-    const sner = Number(sn);
-    if (sner < 1) {
-        throw new Error(`Invalid sn = 0x${sner.toString()} for rot or drt.`);
+    const sner = new CesrNumber({}, sn);
+    if (sner.num < 1) {
+        throw new Error(`Invalid sn = 0x${sner.numh} for rot or drt.`);
     }
     let _isit: number;
 
     if (isith == undefined) {
         _isit = Math.max(1, Math.ceil(keys.length / 2));
     } else {
-        _isit = isith as number;
+        _isit = isith as number; // TODO this type as number does not make sense when isith is a string containing weighted thresholds
     }
 
     const tholder = new Tholder({ sith: _isit });
@@ -84,6 +84,7 @@ export function rotate({
         throw new Error(`Invalid sith = ${tholder.num} less than 1.`);
     }
     if (tholder.size > keys.length) {
+        // TODO this error should say that the threshold has not been met
         throw new Error(`Invalid sith = ${tholder.num} for keys = ${keys}`);
     }
 
@@ -107,7 +108,10 @@ export function rotate({
         throw new Error(`Invalid sith = ${ntholder.num} less than 1.`);
     }
     if (ntholder.size > _ndigs.length) {
-        throw new Error(`Invalid sith = ${ntholder.num} for ndigs = ${ndigs}`);
+        // TODO this error should say that the threshold has not been met
+        throw new Error(
+            `Signing threshold failure: ${keys.length} number of signers not equal to or greater than sith = ${tholder.size} for keys = ${keys}`
+        );
     }
 
     let _wits: Array<string>;
@@ -121,24 +125,15 @@ export function rotate({
         throw new Error(`Invalid wits = ${wits}, has duplicates.`);
     }
 
-    let _cuts: Array<string>;
-    if (cuts === undefined) {
-        _cuts = [];
-    } else {
-        _cuts = cuts;
-    }
-    const cutset = new Set(_cuts);
-    if (cutset.size != _cuts.length) {
+    const cutset = new Set(cuts);
+    if (cutset.size != cuts.length) {
         throw new Error(`Invalid cuts = ${cuts}, has duplicates.`);
     }
 
-    let _adds: Array<string>;
-    if (adds === undefined) {
-        _adds = [];
-    } else {
-        _adds = adds;
+    const addset = new Set(adds);
+    if (addset.size != adds.length) {
+        throw new Error(`Invalid adds = ${adds}, has duplicates.`);
     }
-    const addset = new Set(_adds);
 
     //non empty intersection of witset and addset
     const witaddset = new Set([...witset].filter((x) => addset.has(x)));
@@ -157,7 +152,7 @@ export function rotate({
     }
 
     const newitsetdiff = new Set(_wits);
-    _cuts.forEach(function (v) {
+    cuts.forEach(function (v) {
         newitsetdiff.delete(v);
     });
     const newitset = new Set(
@@ -194,12 +189,12 @@ export function rotate({
             throw new Error(`Invalid toad = ${_toad} for wit = ${wits}`);
         }
     }
-    const _ked = {
+    const _sad = {
         v: vs,
         t: _ilk,
         d: '',
         i: pre,
-        s: sner.toString(16),
+        s: sner.numh,
         p: dig,
         kt:
             tholder.num &&
@@ -225,8 +220,8 @@ export function rotate({
         ba: adds,
         a: data != undefined ? data : [],
     };
-    const [, ked] = Saider.saidify(_ked);
-    return new Serder(ked);
+    const [, sad] = Saider.saidify(_sad);
+    return new Serder(sad);
 }
 
 export function ample(n: number, f?: number, weak = true) {
@@ -266,9 +261,9 @@ export function ample(n: number, f?: number, weak = true) {
 
 export interface InceptArgs {
     keys: Array<string>;
-    isith?: number | string | Array<string>;
+    isith?: string | number | string[] | string[][];
     ndigs?: Array<string>;
-    nsith?: number | string | Array<string>;
+    nsith?: string | number | string[] | string[][];
     toad?: number | string;
     wits?: Array<string>;
     cnfg?: Array<string>;
@@ -289,13 +284,13 @@ export function incept({
     wits,
     cnfg,
     data,
-    version = Versionage,
+    version = Vrsn_1_0,
     kind = Serials.JSON,
     code,
     intive = false,
     delpre,
 }: InceptArgs) {
-    const vs = versify(Ident.KERI, version, kind, 0);
+    const vs = versify(Protocols.KERI, version, kind, 0);
     const ilk = delpre == undefined ? Ilks.icp : Ilks.dip;
     const sner = new CesrNumber({}, 0);
 
@@ -354,7 +349,7 @@ export function incept({
     cnfg = cnfg == undefined ? new Array<string>() : cnfg;
     data = data == undefined ? new Array<object>() : data;
 
-    let ked = {
+    let sad = {
         v: vs,
         t: ilk,
         d: '',
@@ -371,7 +366,7 @@ export function incept({
     } as Dict<any>;
 
     if (delpre != undefined) {
-        ked['di'] = delpre;
+        sad['di'] = delpre;
         if (code == undefined) {
             code = MtrDex.Blake3_256;
         }
@@ -386,7 +381,7 @@ export function incept({
             );
         }
     } else {
-        prefixer = new Prefixer({ code: code }, ked);
+        prefixer = new Prefixer({ code: code }, sad);
         if (delpre != undefined) {
             if (!prefixer.digestive) {
                 throw new Error(
@@ -396,14 +391,14 @@ export function incept({
         }
     }
 
-    ked['i'] = prefixer.qb64;
+    sad['i'] = prefixer.qb64;
     if (prefixer.digestive) {
-        ked['d'] = prefixer.qb64;
+        sad['d'] = prefixer.qb64;
     } else {
-        [, ked] = Saider.saidify(ked);
+        [, sad] = Saider.saidify(sad);
     }
 
-    return new Serder(ked);
+    return new Serder(sad);
 }
 
 export function messagize(
@@ -414,12 +409,12 @@ export function messagize(
     cigars?: Array<Cigar>,
     pipelined: boolean = false
 ): Uint8Array {
-    let msg = new Uint8Array(b(serder.raw));
-    let atc = new Uint8Array();
+    let msg: Uint8Array = new Uint8Array(b(serder.raw));
+    let atc: Uint8Array = new Uint8Array();
 
     if (sigers == undefined && wigers == undefined && cigars == undefined) {
         throw new Error(
-            `Missing attached signatures on message = ${serder.ked}.`
+            `Missing attached signatures on message = ${serder.sad}.`
         );
     }
 
@@ -528,7 +523,7 @@ interface InteractArgs {
 
 export function interact(args: InteractArgs): Serder {
     let { pre, dig, sn, data, version, kind } = args;
-    const vs = versify(Ident.KERI, version, kind, 0);
+    const vs = versify(Protocols.KERI, version, kind, 0);
     const ilk = Ilks.ixn;
     const sner = new CesrNumber({}, sn);
 
@@ -538,7 +533,7 @@ export function interact(args: InteractArgs): Serder {
 
     data = data == undefined ? new Array<any>() : data;
 
-    let ked = {
+    let sad = {
         v: vs,
         t: ilk,
         d: '',
@@ -548,9 +543,9 @@ export function interact(args: InteractArgs): Serder {
         a: data,
     } as Dict<any>;
 
-    [, ked] = Saider.saidify(ked);
+    [, sad] = Saider.saidify(sad);
 
-    return new Serder(ked);
+    return new Serder(sad);
 }
 
 export function reply(
@@ -560,7 +555,7 @@ export function reply(
     version: Version | undefined,
     kind: Serials = Serials.JSON
 ) {
-    const vs = versify(Ident.KERI, version, kind, 0);
+    const vs = versify(Protocols.KERI, version, kind, 0);
     if (data == undefined) {
         data = {};
     }

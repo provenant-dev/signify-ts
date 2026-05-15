@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         os: [macOS-latest, ubuntu-latest]
-        node-version: ['18', '20']
+        node-version: ['20', '22', '24']
 
     steps:
       - name: Checkout repo
@@ -39,51 +39,46 @@ jobs:
       
       - name: Lint
         run: npm run lint
-      
-      - name: Test
-        run: npm test -- --coverage=true
-      
+
       - name: Build
         run: npm run build
+ 
+      - name: Test
+        run: npm test -- --coverage=true
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   test:
-    name: Run integration test
-    runs-on: ubuntu-latest
+    name: Run integration test using keria:${{ matrix.keria-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ['ubuntu-latest']
+        keria-version: ['0.2.0-rc2']
+        node-version: ['20']
+    env:
+      KERIA_IMAGE_TAG: ${{ matrix.keria-version }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: ${{ matrix.node-version }}
           cache: 'npm'
       - name: install deps
         run: npm ci
       - name: Build
         run: npm run build
+      - name: Print docker compose config
+        run: docker compose config
       - name: Start dependencies
-        run: docker compose up deps --pull always
+        run: docker compose up --wait --pull always
       - name: Run integration test
         run: npm run test:integration
       - name: Print logs
         run: docker compose logs
         if: always()
-
-  audit:
-    name: Find vulnerabilities
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      - name: Run audit
-        run: npm audit

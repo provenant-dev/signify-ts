@@ -1,9 +1,11 @@
 import libsodium from 'libsodium-wrappers-sumo';
-import { strict as assert } from 'assert';
-import { IdrDex, Indexer } from '../../src/keri/core/indexer';
-import { b, intToB64 } from '../../src/keri/core/core';
-import Base64 from 'urlsafe-base64';
-import { Buffer } from 'buffer';
+import { assert, describe, it } from 'vitest';
+import { IdrDex, Indexer } from '../../src/keri/core/indexer.ts';
+import { b, intToB64 } from '../../src/keri/core/core.ts';
+import {
+    decodeBase64Url,
+    encodeBase64Url,
+} from '../../src/keri/core/base64.ts';
 
 describe('Indexer', () => {
     it('should encode and decode dual indexed signatures', async () => {
@@ -68,7 +70,7 @@ describe('Indexer', () => {
             const odx = i + ps;
             bytes[odx] = sig[i];
         }
-        const sig64 = Base64.encode(Buffer.from(bytes));
+        const sig64 = encodeBase64Url(bytes);
         assert.equal(sig64.length, 88);
         assert.equal(
             sig64,
@@ -85,23 +87,20 @@ describe('Indexer', () => {
         assert.equal(qsig64.length, 88);
         let qsig64b = b(qsig64);
 
-        let qsig2b = Base64.decode(qsig64);
+        let qsig2b = decodeBase64Url(qsig64);
         assert.equal(qsig2b.length, 66);
         // assert qsig2b == (b"\x00\x00\x99\xd2<9$$0\x9fk\xfb\x18\xa0\x8c@r\x122.k\xb2\xc7\x1fp\x0e'm"
         // b'\x8f@\xaa\xa5\x8c\xc8n\x85\xc8!\xf6q\x91p\xa9\xec\xcf\x92\xaf)'
         // b'\xde\xca\xfc\x7f~\xd7o|\x17\x82\x1d\xd4<o"\x81&\t')
         assert.deepStrictEqual(
             qsig2b,
-            Buffer.from(
-                new Uint8Array([
-                    0, 0, 153, 210, 60, 57, 36, 36, 48, 159, 107, 251, 24, 160,
-                    140, 64, 114, 18, 50, 46, 107, 178, 199, 31, 112, 14, 39,
-                    109, 143, 64, 170, 165, 140, 200, 110, 133, 200, 33, 246,
-                    113, 145, 112, 169, 236, 207, 146, 175, 41, 222, 202, 252,
-                    127, 126, 215, 111, 124, 23, 130, 29, 212, 60, 111, 34, 129,
-                    38, 9,
-                ])
-            )
+            new Uint8Array([
+                0, 0, 153, 210, 60, 57, 36, 36, 48, 159, 107, 251, 24, 160, 140,
+                64, 114, 18, 50, 46, 107, 178, 199, 31, 112, 14, 39, 109, 143,
+                64, 170, 165, 140, 200, 110, 133, 200, 33, 246, 113, 145, 112,
+                169, 236, 207, 146, 175, 41, 222, 202, 252, 127, 126, 215, 111,
+                124, 23, 130, 29, 212, 60, 111, 34, 129, 38, 9,
+            ])
         );
 
         let indexer = new Indexer({ raw: sig });
@@ -166,7 +165,7 @@ describe('Indexer', () => {
         qsig64 =
             'AFCZ0jw5JCQwn2v7GKCMQHISMi5rsscfcA4nbY9AqqWMyG6FyCH2cZFwqezPkq8p3sr8f37Xb3wXgh3UPG8igSYJ';
         qsig64b = b(qsig64);
-        qsig2b = Base64.decode(qsig64);
+        qsig2b = decodeBase64Url(qsig64);
         assert.equal(qsig2b.length, 66);
 
         indexer = new Indexer({ raw: sig, code: IdrDex.Ed25519_Sig, index: 5 });
@@ -219,7 +218,7 @@ describe('Indexer', () => {
         assert.equal(indexer.index, 0);
         assert.equal(indexer.ondex, 0);
         assert.notEqual(indexer.qb64, qsig64);
-        assert.notDeepStrictEqual(indexer.qb64b, qsig64b);
+        assert.notDeepEqual(indexer.qb64b, qsig64b);
 
         indexer = new Indexer({ qb64: qsig64 });
         assert.deepStrictEqual(indexer.raw, sig);

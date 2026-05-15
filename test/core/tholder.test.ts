@@ -1,6 +1,6 @@
-import { strict as assert } from 'assert';
-import { Tholder } from '../../src/keri/core/tholder';
-import { math } from '../../src';
+import { assert, describe, it } from 'vitest';
+import { fraction } from 'mathjs';
+import { Tholder } from '../../src/keri/core/tholder.ts';
 
 describe('THolder', () => {
     it('should hold thresholds', async () => {
@@ -66,11 +66,11 @@ describe('THolder', () => {
         assert.equal(tholder.size, 5);
         assert.deepStrictEqual(tholder.thold, [
             [
-                math.fraction('1/2'),
-                math.fraction('1/2'),
-                math.fraction('1/4'),
-                math.fraction('1/4'),
-                math.fraction('1/4'),
+                fraction('1/2'),
+                fraction('1/2'),
+                fraction('1/4'),
+                fraction('1/4'),
+                fraction('1/4'),
             ],
         ]);
         assert.equal(tholder.satisfy([0, 1]), true);
@@ -91,18 +91,13 @@ describe('THolder', () => {
         });
         assert.equal(tholder.weighted, true);
         assert.equal(tholder.size, 7);
-        assert.deepStrictEqual(tholder.sith, [
+        assert.deepStrictEqual<unknown>(tholder.sith, [
             ['1/2', '1/2', '1/2'],
             ['1/3', '1/3', '1/3', '1/3'],
         ]);
         assert.deepStrictEqual(tholder.thold, [
-            [math.fraction(1, 2), math.fraction(1, 2), math.fraction(1, 2)],
-            [
-                math.fraction(1, 3),
-                math.fraction(1, 3),
-                math.fraction(1, 3),
-                math.fraction(1, 3),
-            ],
+            [fraction(1, 2), fraction(1, 2), fraction(1, 2)],
+            [fraction(1, 3), fraction(1, 3), fraction(1, 3), fraction(1, 3)],
         ]);
         assert.equal(tholder.satisfy([0, 2, 3, 5, 6]), true);
         assert.equal(tholder.satisfy([1, 2, 3, 4, 5]), true);
@@ -116,19 +111,19 @@ describe('THolder', () => {
         });
         assert.equal(tholder.weighted, true);
         assert.equal(tholder.size, 7);
-        assert.deepStrictEqual(tholder.sith, [
+        assert.deepStrictEqual<unknown>(tholder.sith, [
             ['1/2', '1/2', '1/4', '1/4', '1/4'],
             ['1', '1'],
         ]);
         assert.deepStrictEqual(tholder.thold, [
             [
-                math.fraction(1, 2),
-                math.fraction(1, 2),
-                math.fraction(1, 4),
-                math.fraction(1, 4),
-                math.fraction(1, 4),
+                fraction(1, 2),
+                fraction(1, 2),
+                fraction(1, 4),
+                fraction(1, 4),
+                fraction(1, 4),
             ],
-            [math.fraction(1, 1), math.fraction(1, 1)],
+            [fraction(1, 1), fraction(1, 1)],
         ]);
         assert.equal(tholder.satisfy([1, 2, 3, 5]), true);
         assert.equal(tholder.satisfy([0, 1, 6]), true);
@@ -145,7 +140,7 @@ describe('THolder', () => {
         });
         assert.equal(tholder.weighted, true);
         assert.equal(tholder.size, 7);
-        assert.deepStrictEqual(tholder.sith, [
+        assert.deepStrictEqual<unknown>(tholder.sith, [
             ['1/2', '1/2', '1/4', '1/4', '1/4'],
             ['1', '1'],
         ]);
@@ -155,13 +150,13 @@ describe('THolder', () => {
         );
         assert.deepStrictEqual(tholder.thold, [
             [
-                math.fraction(1, 2),
-                math.fraction(1, 2),
-                math.fraction(1, 4),
-                math.fraction(1, 4),
-                math.fraction(1, 4),
+                fraction(1, 2),
+                fraction(1, 2),
+                fraction(1, 4),
+                fraction(1, 4),
+                fraction(1, 4),
             ],
-            [math.fraction(1, 1), math.fraction(1, 1)],
+            [fraction(1, 1), fraction(1, 1)],
         ]);
         assert.equal(tholder.satisfy([1, 2, 3, 5]), true);
         assert.equal(tholder.satisfy([0, 1, 6]), true);

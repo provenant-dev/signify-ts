@@ -1,11 +1,20 @@
-import { SignifyClient } from './clienting';
-import { Operation } from './coring';
+import { SignifyClient } from './clienting.ts';
+import { components } from '../../types/keria-api-schema.ts';
+import { ChallengeOperation } from '../core/keyState.ts';
+import { Exn } from './exchanging.ts';
+
+export type Contact = components['schemas']['Contact'];
+
+export interface ContactInfo {
+    [key: string]: unknown;
+}
 
 /**
  * Contacts
  */
 export class Contacts {
     client: SignifyClient;
+
     /**
      * Contacts
      * @param {SignifyClient} client
@@ -26,7 +35,7 @@ export class Contacts {
         group?: string,
         filterField?: string,
         filterValue?: string
-    ): Promise<any> {
+    ): Promise<Contact[]> {
         const params = new URLSearchParams();
         if (group !== undefined) {
             params.append('group', group);
@@ -48,7 +57,7 @@ export class Contacts {
      * @param {string} pre Prefix of the contact
      * @returns {Promise<any>} A promise to the contact
      */
-    async get(pre: string): Promise<any> {
+    async get(pre: string): Promise<Contact> {
         const path = `/contacts/` + pre;
         const method = 'GET';
         const res = await this.client.fetch(path, method, null);
@@ -58,11 +67,11 @@ export class Contacts {
     /**
      * Add a contact
      * @async
-     * @param {string} pre Prefix of the contact
-     * @param {any} info Information about the contact
-     * @returns {Promise<any>} A promise to the result of the addition
+     * @param pre Prefix of the contact
+     * @param info Information about the contact
+     * @returns A promise to the result of the addition
      */
-    async add(pre: string, info: any): Promise<any> {
+    async add(pre: string, info: ContactInfo): Promise<Contact> {
         const path = `/contacts/` + pre;
         const method = 'POST';
 
@@ -74,14 +83,13 @@ export class Contacts {
      * Delete a contact
      * @async
      * @param {string} pre Prefix of the contact
-     * @returns {Promise<any>} A promise to the result of the deletion
+     * @returns {Promise<void>}
      */
-    async delete(pre: string): Promise<any> {
+    async delete(pre: string): Promise<void> {
         const path = `/contacts/` + pre;
         const method = 'DELETE';
 
-        const res = await this.client.fetch(path, method, null);
-        return await res.json();
+        await this.client.fetch(path, method, undefined);
     }
 
     /**
@@ -91,7 +99,7 @@ export class Contacts {
      * @param {any} info Updated information about the contact
      * @returns {Promise<any>} A promise to the result of the update
      */
-    async update(pre: string, info: any): Promise<any> {
+    async update(pre: string, info: ContactInfo): Promise<Contact> {
         const path = `/contacts/` + pre;
         const method = 'PUT';
 
@@ -99,6 +107,8 @@ export class Contacts {
         return await res.json();
     }
 }
+
+export type Challenge = components['schemas']['Challenge'];
 
 /**
  * Challenges
@@ -117,9 +127,9 @@ export class Challenges {
      * Generate a random challenge word list based on BIP39
      * @async
      * @param {number} strength Integer representing the strength of the challenge. Typically 128 or 256
-     * @returns {Promise<any>} A promise to the list of random words
+     * @returns {Promise<Challenge>} A promise to the generated challenge
      */
-    async generate(strength: number = 128): Promise<any> {
+    async generate(strength: number = 128): Promise<Challenge> {
         const path = `/challenges?strength=${strength.toString()}`;
         const method = 'GET';
         const res = await this.client.fetch(path, method, null);
@@ -129,16 +139,16 @@ export class Challenges {
     /**
      * Respond to a challenge by signing a message with the list of words
      * @async
-     * @param {string} name Name or alias of the identifier
-     * @param {string} recipient Prefix of the recipient of the response
-     * @param {Array<string>} words List of words to embed in the signed response
-     * @returns {Promise<Response>} A promise to the result of the response
+     * @param name Name or alias of the identifier
+     * @param recipient Prefix of the recipient of the response
+     * @param words List of words to embed in the signed response
+     * @returns {Promise<Exn>} A promise to the signed response exn message
      */
     async respond(
         name: string,
         recipient: string,
         words: string[]
-    ): Promise<Response> {
+    ): Promise<Exn> {
         const hab = await this.client.identifiers().get(name);
         const exchanges = this.client.exchanges();
         const resp = await exchanges.send(
@@ -155,11 +165,11 @@ export class Challenges {
 
     /**
      * Ask Agent to verify a given sender signed the provided words
-     * @param {string} source Prefix of the identifier that was challenged
-     * @param {Array<string>} words List of challenge words to check for
+     * @param source Prefix of the identifier that was challenged
+     * @param words List of challenge words to check for
      * @returns A promise to the long running operation
      */
-    async verify(source: string, words: string[]): Promise<Operation<unknown>> {
+    async verify(source: string, words: string[]): Promise<ChallengeOperation> {
         const path = `/challenges_verify/${source}`;
         const method = 'POST';
         const data = {
@@ -172,8 +182,8 @@ export class Challenges {
 
     /**
      * Mark challenge response as signed and accepted
-     * @param {string} source Prefix of the identifier that was challenged
-     * @param {string} said qb64 AID of exn message representing the signed response
+     * @param source Prefix of the identifier that was challenged
+     * @param said qb64 AID of exn message representing the signed response
      * @returns {Promise<Response>} A promise to the result
      */
     async responded(source: string, said: string): Promise<Response> {

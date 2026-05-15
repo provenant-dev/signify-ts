@@ -1,18 +1,24 @@
-import { Agent, Controller } from './controller';
-import { Tier } from '../core/salter';
-import { Authenticater } from '../core/authing';
-import { ExternalModule, KeyManager } from '../core/keeping';
+import { components } from '../../types/keria-api-schema.ts';
+import { Authenticater } from '../core/authing.ts';
+import { HEADER_SIG_TIME } from '../core/httping.ts';
+import { ExternalModule, IdentifierManagerFactory } from '../core/keeping.ts';
+import { Tier } from '../core/salter.ts';
 
-import { Identifier } from './aiding';
-import { Contacts, Challenges } from './contacting';
-import { Oobis, Operations, KeyEvents, KeyStates } from './coring';
-import { Credentials, Ipex, Registries, Schemas } from './credentialing';
-import { Notifications } from './notifying';
-import { Escrows } from './escrowing';
-import { Groups } from './grouping';
-import { Exchanges } from './exchanging';
+import { Identifier } from './aiding.ts';
+import { Contacts, Challenges } from './contacting.ts';
+import { Agent, Controller } from './controller.ts';
+import { Oobis, Operations, KeyEvents, KeyStates, Config } from './coring.ts';
+import { Credentials, Ipex, Registries, Schemas } from './credentialing.ts';
+import { Delegations } from './delegating.ts';
+import { Escrows } from './escrowing.ts';
+import { Exchanges } from './exchanging.ts';
+import { Groups } from './grouping.ts';
+import { Notifications } from './notifying.ts';
 
 const DEFAULT_BOOT_URL = 'http://localhost:3903';
+
+// Export type outside the class
+export type AgentResourceResult = components['schemas']['AgentResourceResult'];
 
 class State {
     agent: any | null;
@@ -28,7 +34,10 @@ class State {
     }
 }
 
-/** SignifyClient */
+/**
+ * An in-memory key manager that can connect to a KERIA Agent and use it to
+ * receive messages and act as a proxy for multi-signature operations and delegation operations.
+ */
 export class SignifyClient {
     public controller: Controller;
     public url: string;
@@ -36,10 +45,27 @@ export class SignifyClient {
     public pidx: number;
     public agent: Agent | null;
     public authn: Authenticater | null;
-    public manager: KeyManager | null;
+    public manager: IdentifierManagerFactory | null;
     public tier: Tier;
     public bootUrl: string;
     public exteralModules: ExternalModule[];
+    private _identifiers = new Identifier(this);
+    private _operations = new Operations(this);
+    private _keyEvents = new KeyEvents(this);
+    private _keyStates = new KeyStates(this);
+    private _oobis = new Oobis(this);
+    private _config = new Config(this);
+    private _delegations = new Delegations(this);
+    private _exchanges = new Exchanges(this);
+    private _groups = new Groups(this);
+    private _escrows = new Escrows(this);
+    private _credentials = new Credentials(this);
+    private _registries = new Registries(this);
+    private _ipex = new Ipex(this);
+    private _notifications = new Notifications(this);
+    private _contacts = new Contacts(this);
+    private _challenges = new Challenges(this);
+    private _schemas = new Schemas(this);
 
     /**
      * SignifyClient constructor
@@ -83,7 +109,7 @@ export class SignifyClient {
     async boot(): Promise<Response> {
         const [evt, sign] = this.controller?.event ?? [];
         const data = {
-            icp: evt.ked,
+            icp: evt.sad,
             sig: sign.qb64,
             stem: this.controller?.stem,
             pidx: 1,
@@ -112,7 +138,7 @@ export class SignifyClient {
             throw new Error(`agent does not exist for controller ${caid}`);
         }
 
-        const data = await res.json();
+        const data = (await res.json()) as AgentResourceResult;
         const state = new State();
         state.agent = data.agent ?? {};
         state.controller = data.controller ?? {};
@@ -142,10 +168,10 @@ export class SignifyClient {
                 'commitment to controller AID missing in agent inception event'
             );
         }
-        if (this.controller.serder.ked.s == 0) {
+        if (this.controller.serder.sad.s == 0) {
             await this.approveDelegation();
         }
-        this.manager = new KeyManager(
+        this.manager = new IdentifierManagerFactory(
             this.controller.salter,
             this.exteralModules
         );
@@ -176,15 +202,13 @@ export class SignifyClient {
 
         headers.set('Signify-Resource', this.controller.pre);
         headers.set(
-            'Signify-Timestamp',
+            HEADER_SIG_TIME,
             new Date().toISOString().replace('Z', '000+00:00')
         );
         headers.set('Content-Type', 'application/json');
 
         const _body = method == 'GET' ? null : JSON.stringify(data);
-        if (_body !== null) {
-            headers.set('Content-Length', String(_body.length));
-        }
+
         if (this.authn) {
             signed_headers = this.authn.sign(
                 headers,
@@ -232,22 +256,24 @@ export class SignifyClient {
     }
 
     /**
-     * Fetch a resource from from an external URL with headers signed by an AID
+     * Create a Signed Request to fetch a resource from an external URL with headers signed by an AID
      * @async
-     * @param {string} url URL of the resource
-     * @param {string} path Path to the resource
-     * @param {string} method HTTP method
-     * @param {any} data Data to be sent in the body of the resource
      * @param {string} aidName Name or alias of the AID to be used for signing
-     * @returns {Promise<Response>} A promise to the result of the fetch
+     * @param {string} url URL of the requested resource
+     * @param {RequestInit} req Request options should include:
+     *     - method: HTTP method
+     *     - data Data to be sent in the body of the resource.
+     *              If the data is a CESR JSON string then you should also set contentType to 'application/json+cesr'
+     *              If the data is a FormData object then you should not set the contentType and the browser will set it to 'multipart/form-data'
+     *              If the data is an object then you should use JSON.stringify to convert it to a string and set the contentType to 'application/json'
+     *     - contentType Content type of the request.
+     * @returns {Promise<Request>} A promise to the created Request
      */
-    async signedFetch(
+    async createSignedRequest(
+        aidName: string,
         url: string,
-        path: string,
-        method: string,
-        data: any,
-        aidName: string
-    ): Promise<Response> {
+        req: RequestInit
+    ): Promise<Request> {
         const hab = await this.identifiers().get(aidName);
         const keeper = this.manager!.get(hab);
 
@@ -256,42 +282,21 @@ export class SignifyClient {
             keeper.signers[0].verfer
         );
 
-        const headers = new Headers();
-        headers.set('Signify-Resource', hab.prefix);
+        const headers = new Headers(req.headers);
+        headers.set('Signify-Resource', hab['prefix']);
         headers.set(
-            'Signify-Timestamp',
+            HEADER_SIG_TIME,
             new Date().toISOString().replace('Z', '000+00:00')
         );
 
-        if (data !== null) {
-            headers.set('Content-Length', data.length);
-        } else {
-            headers.set('Content-Length', '0');
-        }
         const signed_headers = authenticator.sign(
-            headers,
-            method,
-            path.split('?')[0]
+            new Headers(headers),
+            req.method ?? 'GET',
+            new URL(url).pathname
         );
-        let _body = null;
-        if (method != 'GET') {
-            if (data instanceof FormData) {
-                _body = data;
-                // do not set the content type, let the browser do it
-                // headers.set('Content-Type', 'multipart/form-data')
-            } else {
-                _body = JSON.stringify(data);
-                headers.set('Content-Type', 'application/json');
-            }
-        } else {
-            headers.set('Content-Type', 'application/json');
-        }
+        req.headers = signed_headers;
 
-        return await fetch(url + path, {
-            method: method,
-            body: _body,
-            headers: signed_headers,
-        });
+        return new Request(url, req);
     }
 
     /**
@@ -303,7 +308,7 @@ export class SignifyClient {
         const sigs = this.controller.approveDelegation(this.agent!);
 
         const data = {
-            ixn: this.controller.serder.ked,
+            ixn: this.controller.serder.sad,
             sigs: sigs,
         };
 
@@ -375,7 +380,7 @@ export class SignifyClient {
      * @returns {Identifier}
      */
     identifiers(): Identifier {
-        return new Identifier(this);
+        return this._identifiers;
     }
 
     /**
@@ -383,7 +388,7 @@ export class SignifyClient {
      * @returns {Oobis}
      */
     oobis(): Oobis {
-        return new Oobis(this);
+        return this._oobis;
     }
 
     /**
@@ -391,7 +396,7 @@ export class SignifyClient {
      * @returns {Operations}
      */
     operations(): Operations {
-        return new Operations(this);
+        return this._operations;
     }
 
     /**
@@ -399,7 +404,7 @@ export class SignifyClient {
      * @returns {KeyEvents}
      */
     keyEvents(): KeyEvents {
-        return new KeyEvents(this);
+        return this._keyEvents;
     }
 
     /**
@@ -407,7 +412,7 @@ export class SignifyClient {
      * @returns {KeyStates}
      */
     keyStates(): KeyStates {
-        return new KeyStates(this);
+        return this._keyStates;
     }
 
     /**
@@ -415,7 +420,7 @@ export class SignifyClient {
      * @returns {Credentials}
      */
     credentials(): Credentials {
-        return new Credentials(this);
+        return this._credentials;
     }
 
     /**
@@ -423,7 +428,7 @@ export class SignifyClient {
      * @returns {Ipex}
      */
     ipex(): Ipex {
-        return new Ipex(this);
+        return this._ipex;
     }
 
     /**
@@ -431,7 +436,7 @@ export class SignifyClient {
      * @returns {Registries}
      */
     registries(): Registries {
-        return new Registries(this);
+        return this._registries;
     }
 
     /**
@@ -439,7 +444,7 @@ export class SignifyClient {
      * @returns {Schemas}
      */
     schemas(): Schemas {
-        return new Schemas(this);
+        return this._schemas;
     }
 
     /**
@@ -447,7 +452,7 @@ export class SignifyClient {
      * @returns {Challenges}
      */
     challenges(): Challenges {
-        return new Challenges(this);
+        return this._challenges;
     }
 
     /**
@@ -455,7 +460,7 @@ export class SignifyClient {
      * @returns {Contacts}
      */
     contacts(): Contacts {
-        return new Contacts(this);
+        return this._contacts;
     }
 
     /**
@@ -463,7 +468,7 @@ export class SignifyClient {
      * @returns {Notifications}
      */
     notifications(): Notifications {
-        return new Notifications(this);
+        return this._notifications;
     }
 
     /**
@@ -471,7 +476,7 @@ export class SignifyClient {
      * @returns {Escrows}
      */
     escrows(): Escrows {
-        return new Escrows(this);
+        return this._escrows;
     }
 
     /**
@@ -479,7 +484,7 @@ export class SignifyClient {
      * @returns {Groups}
      */
     groups(): Groups {
-        return new Groups(this);
+        return this._groups;
     }
 
     /**
@@ -487,6 +492,22 @@ export class SignifyClient {
      * @returns {Exchanges}
      */
     exchanges(): Exchanges {
-        return new Exchanges(this);
+        return this._exchanges;
+    }
+
+    /**
+     * Get delegations resource
+     * @returns {Delegations}
+     */
+    delegations(): Delegations {
+        return this._delegations;
+    }
+
+    /**
+     * Get agent config resource
+     * @returns {Config}
+     */
+    config(): Config {
+        return this._config;
     }
 }

@@ -1,26 +1,40 @@
-import { SignifyClient } from './clienting';
-import { Salter } from '../core/salter';
-import { interact, messagize } from '../core/eventing';
-import { vdr } from '../core/vdring';
+import { SignifyClient } from './clienting.ts';
+import { interact, messagize } from '../core/eventing.ts';
+import { vdr } from '../core/vdring.ts';
 import {
     b,
     d,
     Dict,
-    Ident,
+    Protocols,
     Ilks,
     Serials,
     versify,
-    Versionage,
-} from '../core/core';
-import { Saider } from '../core/saider';
-import { Serder } from '../core/serder';
-import { Siger } from '../core/siger';
-import { TraitDex } from './habery';
+    Vrsn_1_0,
+} from '../core/core.ts';
+import { Saider } from '../core/saider.ts';
+import { Serder } from '../core/serder.ts';
+import { Siger } from '../core/siger.ts';
+import { TraitDex } from './habery.ts';
 import {
     serializeACDCAttachment,
     serializeIssExnAttachment,
-} from '../core/utils';
-import { Operation } from './coring';
+} from '../core/utils.ts';
+import {
+    ExchangeOperation,
+    CredentialOperation,
+    GroupOperation,
+    DelegationOperation,
+    WitnessOperation,
+    DoneOperation,
+    HabState,
+    RegistryOperation,
+} from '../core/keyState.ts';
+
+import { components } from '../../types/keria-api-schema.ts';
+
+export type CredentialResult = components['schemas']['Credential'];
+export type Registry = components['schemas']['Registry'];
+export type Schema = components['schemas']['Schema'];
 
 /** Types of credentials */
 export class CredentialTypes {
@@ -36,64 +50,145 @@ export interface CredentialFilter {
     limit?: number;
 }
 
-export interface IssueCredentialArgs {
+export interface CredentialSubject {
     /**
-     * Name of the issuer identifier
+     * Issuee, or holder of the credential.
      */
-    issuerName: string;
+    i?: string;
+    /**
+     * Timestamp of issuance.
+     */
+    dt?: string;
+    /**
+     * Privacy salt
+     */
+    u?: string;
+    [key: string]: unknown;
+}
 
+export interface CredentialData {
+    v?: string;
+    d?: string;
     /**
-     * QB64 AID of credential registry
+     * Privacy salt
      */
-    registryId: string;
-
+    u?: string;
     /**
-     * SAID Of the schema
+     * Issuer of the credential.
      */
-    schemaId: string;
-
+    i?: string;
     /**
-     * Prefix of recipient identifier
+     * Registry id.
      */
-    recipient?: string;
-
+    ri?: string;
     /**
-     * Credential data
+     * Schema id
      */
-    data?: Record<string, unknown>;
-
+    s?: string;
     /**
-     * Credential rules
+     * Credential subject data
      */
-    rules?: string | Record<string, unknown>;
-
+    a: CredentialSubject;
     /**
-     * Credential sources
+     * Credential source section
      */
-    source?: Record<string, unknown>;
-
+    e?: { [key: string]: unknown };
     /**
-     * Datetime to set for the credential
+     * Credential rules section
      */
-    datetime?: string;
-
-    /**
-     * Flag to issue a credential with privacy preserving features
-     */
-    privacy?: boolean;
+    r?: { [key: string]: unknown };
 }
 
 export interface IssueCredentialResult {
     acdc: Serder;
     anc: Serder;
     iss: Serder;
-    op: Operation;
+    op: CredentialOperation;
 }
 
 export interface RevokeCredentialResult {
     anc: Serder;
     rev: Serder;
-    op: Operation;
+    op: GroupOperation | DelegationOperation | WitnessOperation | DoneOperation;
+}
+
+export interface IpexApplyArgs {
+    /**
+     * Alias for the IPEX sender AID
+     */
+    senderName: string;
+
+    /**
+     * Prefix of the IPEX recipient AID
+     */
+    recipient: string;
+
+    /**
+     * Message to send
+     */
+    message?: string;
+
+    /**
+     * SAID of schema to apply for
+     */
+    schemaSaid: string;
+
+    /**
+     * Optional attributes for selective disclosure
+     */
+    attributes?: Record<string, unknown>;
+    datetime?: string;
+}
+
+export interface IpexOfferArgs {
+    /**
+     * Alias for the IPEX sender AID
+     */
+    senderName: string;
+
+    /**
+     * Prefix of the IPEX recipient AID
+     */
+    recipient: string;
+
+    /**
+     * Message to send
+     */
+    message?: string;
+
+    /**
+     * ACDC to offer
+     */
+    acdc: Serder;
+
+    /**
+     * Optional qb64 SAID of apply message this offer is responding to
+     */
+    applySaid?: string;
+    datetime?: string;
+}
+
+export interface IpexAgreeArgs {
+    /**
+     * Alias for the IPEX sender AID
+     */
+    senderName: string;
+
+    /**
+     * Prefix of the IPEX recipient AID
+     */
+    recipient: string;
+
+    /**
+     * Message to send
+     */
+    message?: string;
+
+    /**
+     * qb64 SAID of offer message this agree is responding to
+     */
+    offerSaid: string;
+    datetime?: string;
 }
 
 export interface IpexGrantArgs {
@@ -115,7 +210,7 @@ export interface IpexGrantArgs {
     /**
      * qb64 SAID of agree message this grant is responding to
      */
-    agree?: string;
+    agreeSaid?: string;
     datetime?: string;
     acdc: Serder;
     acdcAttachment?: string;
@@ -124,6 +219,31 @@ export interface IpexGrantArgs {
     anc: Serder;
     ancAttachment?: string;
 }
+
+export interface IpexAdmitArgs {
+    /**
+     * Alias for the IPEX sender AID
+     */
+    senderName: string;
+
+    /**
+     * Prefix of the IPEX recipient AID
+     */
+    recipient: string;
+
+    /**
+     * Message to send
+     */
+    message?: string;
+
+    /**
+     * qb64 SAID of agree message this admit is responding to
+     */
+    grantSaid: string;
+    datetime?: string;
+}
+
+export type CredentialState = components['schemas']['CredentialState'];
 
 /**
  * Credentials
@@ -142,9 +262,9 @@ export class Credentials {
      * List credentials
      * @async
      * @param {CredentialFilter} [kargs] Optional parameters to filter the credentials
-     * @returns {Promise<any>} A promise to the list of credentials
+     * @returns {Promise<CredentialResult[]>} A promise to the list of credentials
      */
-    async list(kargs: CredentialFilter = {}): Promise<any> {
+    async list(kargs: CredentialFilter = {}): Promise<CredentialResult[]> {
         const path = `/credentials/query`;
         const filtr = kargs.filter === undefined ? {} : kargs.filter;
         const sort = kargs.sort === undefined ? [] : kargs.sort;
@@ -168,9 +288,19 @@ export class Credentials {
      * @async
      * @param {string} said - SAID of the credential
      * @param {boolean} [includeCESR=false] - Optional flag export the credential in CESR format
-     * @returns {Promise<any>} A promise to the credential
+     * @returns {Promise<CredentialResult | string>} A promise to the credential
      */
-    async get(said: string, includeCESR: boolean = false): Promise<any> {
+    async get(said: string): Promise<CredentialResult>;
+    async get(said: string, includeCESR: false): Promise<CredentialResult>;
+    async get(said: string, includeCESR: true): Promise<string>;
+    async get(
+        said: string,
+        includeCESR: boolean
+    ): Promise<CredentialResult | string>;
+    async get(
+        said: string,
+        includeCESR: boolean = false
+    ): Promise<CredentialResult | string> {
         const path = `/credentials/${said}`;
         const method = 'GET';
         const headers = includeCESR
@@ -182,10 +312,39 @@ export class Credentials {
     }
 
     /**
-     * Issue a credential
+     * Delete a credential from the DB
+     * @async
+     * @param {string} said - SAID of the credential
+     * @returns {Promise<void>}
      */
-    async issue(args: IssueCredentialArgs): Promise<IssueCredentialResult> {
-        const hab = await this.client.identifiers().get(args.issuerName);
+    async delete(said: string): Promise<void> {
+        const path = `/credentials/${said}`;
+        const method = 'DELETE';
+        await this.client.fetch(path, method, undefined);
+    }
+
+    /**
+     * Get the state of a credential
+     * @async
+     * @param {string} ri - management registry identifier
+     * @param {string} said - SAID of the credential
+     * @returns {Promise<CredentialState>} A promise to the credential registry state
+     */
+    async state(ri: string, said: string): Promise<CredentialState> {
+        const path = `/registries/${ri}/${said}`;
+        const method = 'GET';
+        const res = await this.client.fetch(path, method, null);
+        return res.json();
+    }
+
+    /**
+     * Creates a credential in the specified registry to be GRANTed with IPEX to the intended recipient
+     */
+    async issue(
+        name: string,
+        args: CredentialData
+    ): Promise<IssueCredentialResult> {
+        const hab = await this.client.identifiers().get(name);
         const estOnly = hab.state.c !== undefined && hab.state.c.includes('EO');
         if (estOnly) {
             // TODO implement rotation event
@@ -197,40 +356,35 @@ export class Credentials {
 
         const keeper = this.client.manager.get(hab);
 
-        const dt =
-            args.datetime ?? new Date().toISOString().replace('Z', '000+00:00');
-
         const [, subject] = Saider.saidify({
             d: '',
-            u: args.privacy ? new Salter({}).qb64 : undefined,
-            i: args.recipient,
-            dt: dt,
-            ...args.data,
+            ...args.a,
+            dt: args.a.dt ?? new Date().toISOString().replace('Z', '000+00:00'),
         });
 
         const [, acdc] = Saider.saidify({
-            v: versify(Ident.ACDC, undefined, Serials.JSON, 0),
+            v: versify(Protocols.ACDC, undefined, Serials.JSON, 0),
             d: '',
-            u: args.privacy ? new Salter({}).qb64 : undefined,
-            i: hab.prefix,
-            ri: args.registryId,
-            s: args.schemaId,
+            u: args.u,
+            i: args.i ?? hab.prefix,
+            ri: args.ri,
+            s: args.s,
             a: subject,
-            e: args.source,
-            r: args.rules,
+            e: args.e,
+            r: args.r,
         });
 
         const [, iss] = Saider.saidify({
-            v: versify(Ident.KERI, undefined, Serials.JSON, 0),
+            v: versify(Protocols.KERI, undefined, Serials.JSON, 0),
             t: Ilks.iss,
             d: '',
             i: acdc.d,
             s: '0',
-            ri: args.registryId,
-            dt: dt,
+            ri: args.ri,
+            dt: subject.dt,
         });
 
-        const sn = Number(hab.state.s);
+        const sn = parseInt(hab.state.s, 16);
         const anc = interact({
             pre: hab.prefix,
             sn: sn + 1,
@@ -253,16 +407,12 @@ export class Credentials {
         const body = {
             acdc: acdc,
             iss: iss,
-            ixn: anc.ked,
+            ixn: anc.sad,
             sigs,
             [keeper.algo]: keeper.params(),
         };
 
-        const headers = new Headers({
-            Accept: 'application/json+cesr',
-        });
-
-        const res = await this.client.fetch(path, method, body, headers);
+        const res = await this.client.fetch(path, method, body);
         const op = await res.json();
 
         return {
@@ -279,7 +429,7 @@ export class Credentials {
      * @param {string} name Name or alias of the identifier
      * @param {string} said SAID of the credential
      * @param {string} datetime date time of revocation
-     * @returns {Promise<any>} A promise to the long-running operation
+     * @returns {Promise<RevokeCredentialResult>} A promise to the long-running operation
      */
     async revoke(
         name: string,
@@ -289,11 +439,20 @@ export class Credentials {
         const hab = await this.client.identifiers().get(name);
         const pre: string = hab.prefix;
 
-        const vs = versify(Ident.KERI, undefined, Serials.JSON, 0);
+        const vs = versify(Protocols.KERI, undefined, Serials.JSON, 0);
         const dt =
             datetime ?? new Date().toISOString().replace('Z', '000+00:00');
 
         const cred = await this.get(said);
+
+        let registryId: string;
+        if ('ri' in cred.sad && cred.sad.ri !== undefined) {
+            registryId = cred.sad.ri;
+        } else if ('rd' in cred.sad && cred.sad.rd !== undefined) {
+            registryId = cred.sad.rd;
+        } else {
+            throw new Error('Neither ri nor rd property found in credential');
+        }
 
         // Create rev
         const _rev = {
@@ -302,7 +461,7 @@ export class Credentials {
             d: '',
             i: said,
             s: '1',
-            ri: cred.sad.ri,
+            ri: registryId,
             p: cred.status.d,
             dt: dt,
         };
@@ -320,7 +479,7 @@ export class Credentials {
             var estOnly = false;
         }
 
-        const sn = Number(state.s);
+        const sn = parseInt(state.s, 16);
         const dig = state.d;
 
         const data: any = [
@@ -346,7 +505,7 @@ export class Credentials {
                 kind: undefined,
             });
             sigs = await keeper.sign(b(serder.raw));
-            ixn = serder.ked;
+            ixn = serder.sad;
         }
 
         const body = {
@@ -358,10 +517,7 @@ export class Credentials {
 
         const path = `/identifiers/${name}/credentials/${said}`;
         const method = 'DELETE';
-        const headers = new Headers({
-            Accept: 'application/json+cesr',
-        });
-        const res = await this.client.fetch(path, method, body, headers);
+        const res = await this.client.fetch(path, method, body);
         const op = await res.json();
 
         return {
@@ -369,133 +525,6 @@ export class Credentials {
             anc: new Serder(ixn),
             op,
         };
-    }
-
-    /**
-     * Present a credential
-     * @async
-     * @param {string} name Name or alias of the identifier
-     * @param {string} said SAID of the credential
-     * @param {string} recipient Identifier prefix of the receiver of the presentation
-     * @param {boolean} [include=true] Flag to indicate whether to stream credential alongside presentation exchange message
-     * @returns {Promise<string>} A promise to the long-running operation
-     */
-    async present(
-        name: string,
-        said: string,
-        recipient: string,
-        include: boolean = true
-    ): Promise<string> {
-        const hab = await this.client.identifiers().get(name);
-        const pre: string = hab.prefix;
-
-        const cred = await this.get(said);
-        const data = {
-            i: cred.sad.i,
-            s: cred.sad.s,
-            n: said,
-        };
-
-        const vs = versify(Ident.KERI, undefined, Serials.JSON, 0);
-
-        const _sad = {
-            v: vs,
-            t: Ilks.exn,
-            d: '',
-            dt: new Date().toISOString().replace('Z', '000+00:00'),
-            r: '/presentation',
-            q: {},
-            a: data,
-        };
-        const [, sad] = Saider.saidify(_sad);
-        const exn = new Serder(sad);
-
-        const keeper = this.client!.manager!.get(hab);
-
-        const sig = keeper.sign(b(exn.raw), true);
-
-        const siger = new Siger({ qb64: sig[0] });
-        const seal = ['SealLast', { i: pre }];
-        let ims = messagize(exn, [siger], seal, undefined, undefined, true);
-        ims = ims.slice(JSON.stringify(exn.ked).length);
-
-        const body = {
-            exn: exn.ked,
-            sig: new TextDecoder().decode(ims),
-            recipient: recipient,
-            include: include,
-        };
-
-        const path = `/identifiers/${name}/credentials/${said}/presentations`;
-        const method = 'POST';
-        const headers = new Headers({
-            Accept: 'application/json+cesr',
-        });
-        const res = await this.client.fetch(path, method, body, headers);
-        return await res.text();
-    }
-
-    /**
-     * Request a presentation of a credential
-     * @async
-     * @param {string} name Name or alias of the identifier
-     * @param {string} recipient Identifier prefix of the receiver of the presentation
-     * @param {string} schema SAID of the schema
-     * @param {string} [issuer] Optional prefix of the issuer of the credential
-     * @returns {Promise<string>} A promise to the long-running operation
-     */
-    async request(
-        name: string,
-        recipient: string,
-        schema: string,
-        issuer?: string
-    ): Promise<string> {
-        const hab = await this.client.identifiers().get(name);
-        const pre: string = hab.prefix;
-
-        const data: any = {
-            s: schema,
-        };
-        if (issuer !== undefined) {
-            data['i'] = issuer;
-        }
-
-        const vs = versify(Ident.KERI, undefined, Serials.JSON, 0);
-
-        const _sad = {
-            v: vs,
-            t: Ilks.exn,
-            d: '',
-            dt: new Date().toISOString().replace('Z', '000+00:00'),
-            r: '/presentation/request',
-            q: {},
-            a: data,
-        };
-        const [, sad] = Saider.saidify(_sad);
-        const exn = new Serder(sad);
-
-        const keeper = this.client!.manager!.get(hab);
-
-        const sig = await keeper.sign(b(exn.raw), true);
-
-        const siger = new Siger({ qb64: sig[0] });
-        const seal = ['SealLast', { i: pre }];
-        let ims = messagize(exn, [siger], seal, undefined, undefined, true);
-        ims = ims.slice(JSON.stringify(exn.ked).length);
-
-        const body = {
-            exn: exn.ked,
-            sig: new TextDecoder().decode(ims),
-            recipient: recipient,
-        };
-
-        const path = `/identifiers/${name}/requests`;
-        const method = 'POST';
-        const headers = new Headers({
-            Accept: 'application/json+cesr',
-        });
-        const res = await this.client.fetch(path, method, body, headers);
-        return await res.text();
     }
 }
 
@@ -538,7 +567,7 @@ export class RegistryResult {
         return this._sigs;
     }
 
-    async op(): Promise<any> {
+    async op(): Promise<RegistryOperation> {
         const res = await this.promise;
         return await res.json();
     }
@@ -561,9 +590,9 @@ export class Registries {
      * List registries
      * @async
      * @param {string} name Name or alias of the identifier
-     * @returns {Promise<any>} A promise to the list of registries
+     * @returns {Promise<Registry[]>} A promise to the list of registries
      */
-    async list(name: string): Promise<any> {
+    async list(name: string): Promise<Registry[]> {
         const path = `/identifiers/${name}/registries`;
         const method = 'GET';
         const res = await this.client.fetch(path, method, null);
@@ -604,7 +633,7 @@ export class Registries {
             throw new Error('establishment only not implemented');
         } else {
             const state = hab.state;
-            const sn = Number(state.s);
+            const sn = parseInt(state.s, 16);
             const dig = state.d;
 
             const data: any = [
@@ -620,7 +649,7 @@ export class Registries {
                 sn: sn + 1,
                 data: data,
                 dig: dig,
-                version: Versionage,
+                version: Vrsn_1_0,
                 kind: Serials.JSON,
             });
             const keeper = this.client.manager!.get(hab);
@@ -629,8 +658,8 @@ export class Registries {
                 hab,
                 name,
                 registryName,
-                regser.ked,
-                serder.ked,
+                regser.sad,
+                serder.sad,
                 sigs
             );
             return new RegistryResult(regser, serder, sigs, res);
@@ -638,7 +667,7 @@ export class Registries {
     }
 
     createFromEvents(
-        hab: Dict<any>,
+        hab: HabState,
         name: string,
         registryName: string,
         vcp: Dict<any>,
@@ -666,13 +695,13 @@ export class Registries {
      * @param {string} name Name or alias of the identifier
      * @param {string} registryName Current registry name
      * @param {string} newName New registry name
-     * @returns {Promise<any>} A promise to the registry record
+     * @returns {Promise<Registry>} A promise to the registry record
      */
     async rename(
         name: string,
         registryName: string,
         newName: string
-    ): Promise<any> {
+    ): Promise<Registry> {
         const path = `/identifiers/${name}/registries/${registryName}`;
         const method = 'PUT';
         const data = {
@@ -699,9 +728,9 @@ export class Schemas {
      * Get a schema
      * @async
      * @param {string} said SAID of the schema
-     * @returns {Promise<any>} A promise to the schema
+     * @returns {Promise<Schema>} A promise to the schema
      */
-    async get(said: string): Promise<any> {
+    async get(said: string): Promise<Schema> {
         const path = `/schema/${said}`;
         const method = 'GET';
         const res = await this.client.fetch(path, method, null);
@@ -711,9 +740,9 @@ export class Schemas {
     /**
      * List schemas
      * @async
-     * @returns {Promise<any>} A promise to the list of schemas
+     * @returns {Promise<Schema[]>} A promise to the list of schemas
      */
-    async list(): Promise<any> {
+    async list(): Promise<Schema[]> {
         const path = `/schema`;
         const method = 'GET';
         const res = await this.client.fetch(path, method, null);
@@ -736,18 +765,150 @@ export class Ipex {
     }
 
     /**
+     * Create an IPEX apply EXN message
+     */
+    async apply(args: IpexApplyArgs): Promise<[Serder, string[], string]> {
+        const hab = await this.client.identifiers().get(args.senderName);
+        const data = {
+            m: args.message ?? '',
+            s: args.schemaSaid,
+            a: args.attributes ?? {},
+        };
+
+        return this.client
+            .exchanges()
+            .createExchangeMessage(
+                hab,
+                '/ipex/apply',
+                data,
+                {},
+                args.recipient,
+                args.datetime,
+                undefined
+            );
+    }
+
+    async submitApply(
+        name: string,
+        exn: Serder,
+        sigs: string[],
+        recp: string[]
+    ): Promise<ExchangeOperation> {
+        const body = {
+            exn: exn.sad,
+            sigs,
+            rec: recp,
+        };
+
+        const response = await this.client.fetch(
+            `/identifiers/${name}/ipex/apply`,
+            'POST',
+            body
+        );
+
+        return response.json();
+    }
+
+    /**
+     * Create an IPEX offer EXN message
+     */
+    async offer(args: IpexOfferArgs): Promise<[Serder, string[], string]> {
+        const hab = await this.client.identifiers().get(args.senderName);
+        const data = {
+            m: args.message ?? '',
+        };
+
+        return this.client
+            .exchanges()
+            .createExchangeMessage(
+                hab,
+                '/ipex/offer',
+                data,
+                { acdc: [args.acdc, undefined] },
+                args.recipient,
+                args.datetime,
+                args.applySaid
+            );
+    }
+
+    async submitOffer(
+        name: string,
+        exn: Serder,
+        sigs: string[],
+        atc: string,
+        recp: string[]
+    ): Promise<ExchangeOperation> {
+        const body = {
+            exn: exn.sad,
+            sigs,
+            atc,
+            rec: recp,
+        };
+
+        const response = await this.client.fetch(
+            `/identifiers/${name}/ipex/offer`,
+            'POST',
+            body
+        );
+
+        return response.json();
+    }
+
+    /**
+     * Create an IPEX agree EXN message
+     */
+    async agree(args: IpexAgreeArgs): Promise<[Serder, string[], string]> {
+        const hab = await this.client.identifiers().get(args.senderName);
+        const data = {
+            m: args.message ?? '',
+        };
+
+        return this.client
+            .exchanges()
+            .createExchangeMessage(
+                hab,
+                '/ipex/agree',
+                data,
+                {},
+                args.recipient,
+                args.datetime,
+                args.offerSaid
+            );
+    }
+
+    async submitAgree(
+        name: string,
+        exn: Serder,
+        sigs: string[],
+        recp: string[]
+    ): Promise<ExchangeOperation> {
+        const body = {
+            exn: exn.sad,
+            sigs,
+            rec: recp,
+        };
+
+        const response = await this.client.fetch(
+            `/identifiers/${name}/ipex/agree`,
+            'POST',
+            body
+        );
+
+        return response.json();
+    }
+
+    /**
      * Create an IPEX grant EXN message
      */
     async grant(args: IpexGrantArgs): Promise<[Serder, string[], string]> {
         const hab = await this.client.identifiers().get(args.senderName);
         const data = {
             m: args.message ?? '',
-            i: args.recipient,
         };
 
         let atc = args.ancAttachment;
         if (atc === undefined) {
-            const keeper = this.client.manager?.get(hab);
+            const keeper = this.client.manager!.get(hab);
             const sigs = await keeper.sign(b(args.anc.raw));
             const sigers = sigs.map((sig: string) => new Siger({ qb64: sig }));
             const ims = d(messagize(args.anc, sigers));
@@ -776,9 +937,9 @@ export class Ipex {
                 '/ipex/grant',
                 data,
                 embeds,
-                undefined,
+                args.recipient,
                 args.datetime,
-                args.agree
+                args.agreeSaid
             );
     }
 
@@ -788,9 +949,9 @@ export class Ipex {
         sigs: string[],
         atc: string,
         recp: string[]
-    ): Promise<any> {
+    ): Promise<ExchangeOperation> {
         const body = {
-            exn: exn.ked,
+            exn: exn.sad,
             sigs: sigs,
             atc: atc,
             rec: recp,
@@ -807,22 +968,11 @@ export class Ipex {
 
     /**
      * Create an IPEX admit EXN message
-     * @async
-     * @param {string} name Name or alias of the identifier
-     * @param {string} message accompany human readable description of the credential being admitted
-     * @param {string} grant qb64 SAID of grant message this admit is responding to
-     * @param {string} datetime Optional datetime to set for the credential
-     * @returns {Promise<[Serder, string[], string]>} A promise to the long-running operation
      */
-    async admit(
-        name: string,
-        message: string,
-        grant: string,
-        datetime?: string
-    ): Promise<[Serder, string[], string]> {
-        const hab = await this.client.identifiers().get(name);
+    async admit(args: IpexAdmitArgs): Promise<[Serder, string[], string]> {
+        const hab = await this.client.identifiers().get(args.senderName);
         const data: any = {
-            m: message,
+            m: args.message,
         };
 
         return this.client
@@ -832,9 +982,9 @@ export class Ipex {
                 '/ipex/admit',
                 data,
                 {},
-                undefined,
-                datetime,
-                grant
+                args.recipient,
+                args.datetime,
+                args.grantSaid
             );
     }
 
@@ -844,9 +994,9 @@ export class Ipex {
         sigs: string[],
         atc: string,
         recp: string[]
-    ): Promise<any> {
+    ): Promise<ExchangeOperation> {
         const body = {
-            exn: exn.ked,
+            exn: exn.sad,
             sigs: sigs,
             atc: atc,
             rec: recp,

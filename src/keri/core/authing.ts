@@ -1,15 +1,21 @@
-import { Signer } from './signer';
-import { Verfer } from './verfer';
-import { desiginput, normalize, siginput } from './httping';
-import { Signage, signature, designature } from '../end/ending';
-import { Cigar } from './cigar';
-import { Siger } from './siger';
+import { Signer } from './signer.ts';
+import { Verfer } from './verfer.ts';
+import {
+    desiginput,
+    HEADER_SIG_INPUT,
+    HEADER_SIG_TIME,
+    normalize,
+    siginput,
+} from './httping.ts';
+import { Signage, signature, designature } from '../end/ending.ts';
+import { Cigar } from './cigar.ts';
+import { Siger } from './siger.ts';
 export class Authenticater {
     static DefaultFields = [
         '@method',
         '@path',
         'signify-resource',
-        'signify-timestamp',
+        HEADER_SIG_TIME.toLowerCase(),
     ];
     private _verfer: Verfer;
     private readonly _csig: Signer;
@@ -20,7 +26,7 @@ export class Authenticater {
     }
 
     verify(headers: Headers, method: string, path: string): boolean {
-        const siginput = headers.get('Signature-Input');
+        const siginput = headers.get(HEADER_SIG_INPUT);
         if (siginput == null) {
             return false;
         }
@@ -71,8 +77,9 @@ export class Authenticater {
             items.push(`"@signature-params: ${params}"`);
             const ser = items.join('\n');
             const signage = designature(signature!);
-            const cig = signage[0].markers.get(input.name);
-            if (!this._verfer.verify(cig.raw, ser)) {
+            const markers = signage[0].markers as Map<string, Siger | Cigar>;
+            const cig = markers.get(input.name);
+            if (!cig || !this._verfer.verify(cig.raw, ser)) {
                 throw new Error(`Signature for ${input.keyid} invalid.`);
             }
         });

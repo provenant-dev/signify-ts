@@ -1,14 +1,13 @@
 import {
-    Dict,
-    Ident,
+    Protocols,
     Serials,
     versify,
-    Versionage,
-} from '../../src/keri/core/core';
-import { strict as assert } from 'assert';
-import { MtrDex } from '../../src/keri/core/matter';
+    Vrsn_1_0,
+} from '../../src/keri/core/core.ts';
+import { assert, describe, it } from 'vitest';
+import { MtrDex } from '../../src/keri/core/matter.ts';
 import libsodium from 'libsodium-wrappers-sumo';
-import { Saider } from '../../src/keri/core/saider';
+import { Saider } from '../../src/keri/core/saider.ts';
 
 describe('Saider', () => {
     it('should create Saidified dicts', async () => {
@@ -17,7 +16,7 @@ describe('Saider', () => {
         const kind = Serials.JSON;
         const code = MtrDex.Blake3_256;
 
-        const vs = versify(Ident.KERI, Versionage, kind, 0); // vaccuous size == 0
+        const vs = versify(Protocols.KERI, Vrsn_1_0, kind, 0); // vaccuous size == 0
         assert.equal(vs, 'KERI10JSON000000_');
         const sad4 = {
             v: vs,
@@ -30,8 +29,8 @@ describe('Saider', () => {
                 i: 'EB0_D51cTh_q6uOQ-byFiv5oNXZ-cxdqCqBAa4JmBLtb',
                 name: 'John Jones',
                 role: 'Founder',
-            } as Dict<any>,
-        } as Dict<any>;
+            },
+        };
         const saider = new Saider({}, sad4); // default version string code, kind, and label
         assert.equal(saider.code, code);
         assert.equal(
